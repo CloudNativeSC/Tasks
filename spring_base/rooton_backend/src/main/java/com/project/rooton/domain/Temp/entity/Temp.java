@@ -1,19 +1,20 @@
-package com.umc.meetpick.entity;
+package com.project.rooton.domain.Temp.entity;
 
+import com.project.rooton.global.entity.BaseTimeEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
+@Entity
+@Table(name = "temp")
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
-@Entity
-@Table(name = "Temp")
 @AllArgsConstructor
-public class Temp {
-
+public class Temp extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column
     private Long id;
+
+    // createdAt,updatedAt는 BaseTimeEntity에서 제공
 }
