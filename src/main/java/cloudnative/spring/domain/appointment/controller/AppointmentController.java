@@ -21,10 +21,6 @@ public class AppointmentController {
     public ResponseEntity<?> searchPlaces(@RequestParam String place) {
 
 
-
-
     }
-
-
 
 }
