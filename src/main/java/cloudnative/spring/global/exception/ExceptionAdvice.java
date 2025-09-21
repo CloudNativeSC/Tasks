@@ -1,13 +1,12 @@
 package cloudnative.spring.global.exception;
 
-
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import com.umc.meetpick.common.response.ApiResponse;
-import com.umc.meetpick.common.response.ErrorReasonDTO;
-import com.umc.meetpick.common.response.status.ErrorCode;
+import cloudnative.spring.global.response.ErrorReasonDto;
+import cloudnative.spring.global.response.status.ErrorCode;
+import cloudnative.spring.global.response.ApiResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -58,11 +57,11 @@ public class ExceptionAdvice extends ResponseEntityExceptionHandler {
     @ExceptionHandler(GeneralException.class)
     public ResponseEntity<Object> handleGeneralException(GeneralException generalException, HttpServletRequest request) {
         log.error("General exception occurred: ", generalException);
-        ErrorReasonDTO errorReasonHttpStatus = generalException.getErrorReasonHttpStatus();
+        ErrorReasonDto errorReasonHttpStatus = generalException.getErrorReasonHttpStatus();
         return handleExceptionInternal(generalException, errorReasonHttpStatus, null, request);
     }
 
-    private ResponseEntity<Object> handleExceptionInternal(Exception e, ErrorReasonDTO reason, HttpHeaders headers, HttpServletRequest request) {
+    private ResponseEntity<Object> handleExceptionInternal(Exception e, ErrorReasonDto reason, HttpHeaders headers, HttpServletRequest request) {
         ApiResponse<Object> body = ApiResponse.onFailure(reason.getCode(), reason.getMessage(), null);
         WebRequest webRequest = new ServletWebRequest(request);
         return super.handleExceptionInternal(e, body, headers, reason.getHttpStatus(), webRequest);
