@@ -1,5 +1,6 @@
 package cloudnative.spring.domain.task.enums;
 
 public enum Priority {
-    LOW, MEDIUM, HIGH
+    //필요시 내용 추가
+    MEDIUM
 }

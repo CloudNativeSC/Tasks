@@ -1,7 +1,6 @@
 package cloudnative.spring.domain.task.dto.request;
 
 
-import cloudnative.spring.domain.task.enums.Priority;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 

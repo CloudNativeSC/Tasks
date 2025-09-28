@@ -6,7 +6,6 @@ import cloudnative.spring.domain.task.dto.response.TaskStatusResponse;
 import cloudnative.spring.domain.task.entity.Category;
 import cloudnative.spring.domain.task.entity.Task;
 import cloudnative.spring.domain.task.enums.TaskStatus;
-import cloudnative.spring.domain.task.enums.Priority;
 import cloudnative.spring.domain.task.repository.TaskRepository;
 import cloudnative.spring.domain.task.repository.CategoryRepository;
 import cloudnative.spring.domain.task.dto.request.CreateTaskRequest;

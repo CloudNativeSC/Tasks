@@ -1,16 +1,17 @@
 package cloudnative.spring.domain.task.entity;
 
 
+import cloudnative.spring.domain.task.enums.Priority;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.LocalTime;
 
 import cloudnative.spring.global.entity.BaseTimeEntity;
-import cloudnative.spring.domain.task.enums.Priority;
 import cloudnative.spring.domain.task.enums.TaskStatus;
 import cloudnative.spring.domain.task.enums.RecurringPattern;
-import cloudnative.spring.global.entity.BaseTimeEntity;
 
 @Entity
 @Table(name = "tasks", indexes = {
@@ -28,7 +29,7 @@ public class Task extends BaseTimeEntity {
     private String id;
 
     @Column(name = "user_id", nullable = false)
-    private Long userId;
+    private String userId;
 
     @Column(nullable = false)
     private String title;
@@ -61,6 +62,17 @@ public class Task extends BaseTimeEntity {
     @Enumerated(EnumType.STRING)
     @Column(name = "recurring_pattern")
     private RecurringPattern recurringPattern;
+
+    // 스케줄링
+    @Column(name = "scheduled_date")
+    private LocalDate scheduledDate;
+
+    @Column(name = "scheduled_start_time")
+    private LocalTime scheduledStartTime;
+
+    @Column(name = "scheduled_end_time")
+    private LocalTime scheduledEndTime;
+
 
     @Column(name = "completed_at")
     private LocalDateTime completedAt;

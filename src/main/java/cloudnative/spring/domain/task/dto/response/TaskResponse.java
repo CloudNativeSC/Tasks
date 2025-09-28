@@ -1,13 +1,10 @@
 package cloudnative.spring.domain.task.dto.response;
 
 import cloudnative.spring.domain.task.entity.Task;
-import cloudnative.spring.domain.task.enums.Priority;
 import cloudnative.spring.domain.task.enums.TaskStatus;
 import lombok.Builder;
 import lombok.Getter;
 import java.time.LocalDateTime;
-
-import cloudnative.spring.domain.task.dto.response.CategoryResponse;
 
 @Getter
 @Builder

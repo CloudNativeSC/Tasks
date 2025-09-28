@@ -14,9 +14,8 @@ import cloudnative.spring.global.entity.BaseTimeEntity;
 @AllArgsConstructor
 public class TaskTemplate extends BaseTimeEntity {
 
-    @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private String id;
 
     @Column(name = "template_name", nullable = false, length = 100)
     private String templateName;
@@ -58,7 +57,7 @@ public class TaskTemplate extends BaseTimeEntity {
         this.usageCount = (this.usageCount == null ? 0 : this.usageCount) + 1;
     }
 
-    public Task createTaskFromTemplate(Long userId, String taskId) {
+    public Task createTaskFromTemplate(String userId, String taskId) {
         return Task.builder()
                 .id(taskId)
                 .userId(userId)
