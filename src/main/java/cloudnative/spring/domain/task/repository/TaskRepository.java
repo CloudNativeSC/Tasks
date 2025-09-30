@@ -3,6 +3,7 @@ package cloudnative.spring.domain.task.repository;
 
 import cloudnative.spring.domain.task.entity.Task;
 import cloudnative.spring.domain.task.enums.TaskStatus;
+import cloudnative.spring.domain.task.enums.Priority;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;

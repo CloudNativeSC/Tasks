@@ -20,6 +20,7 @@ import cloudnative.spring.domain.task.enums.RecurringPattern;
         @Index(name = "idx_tasks_due_at", columnList = "due_at")
 })
 @Getter
+@Setter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor

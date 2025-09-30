@@ -26,7 +26,7 @@ public class TaskController {
     @Operation(summary = "할 일 생성", description = "새로운 할 일을 생성합니다.")
     @PostMapping
     public ResponseEntity<TaskResponse> createTask(
-            @Parameter(description = "사용자 ID", required = true) @RequestParam Long userId,
+            @Parameter(description = "사용자 ID", required = true) @RequestParam String userId,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "할 일 생성 정보")
             @RequestBody CreateTaskRequest request) {
         TaskResponse task = taskService.createTask(userId, request);

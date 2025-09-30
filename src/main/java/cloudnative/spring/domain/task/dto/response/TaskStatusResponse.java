@@ -6,8 +6,8 @@ import lombok.Getter;
 @Getter
 @Builder
 public class TaskStatusResponse {
-    private long totalTasks;
-    private long completedTasks;
-    private long todoTasks;
-    private double completionRate;
+    private Long totalTasks;
+    private Long completedTasks;
+    private Long todoTasks;
+    private Double completionRate;
 }

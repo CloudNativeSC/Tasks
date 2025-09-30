@@ -12,7 +12,11 @@ import java.time.LocalDate;
 @Entity
 @Table(name = "daily_schedules",
         uniqueConstraints = @UniqueConstraint(name="unique_user_date", columnNames={"user_id","schedule_date"}))
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class DailySchedule extends BaseTimeEntity {
 
     @Id

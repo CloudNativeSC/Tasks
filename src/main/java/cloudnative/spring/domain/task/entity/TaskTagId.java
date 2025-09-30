@@ -1,4 +1,4 @@
-package cloudnative.spring.domain.tag.entity;
+package cloudnative.spring.domain.task.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
@@ -8,6 +8,7 @@ import java.io.Serializable;
 
 @Embeddable
 @Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode

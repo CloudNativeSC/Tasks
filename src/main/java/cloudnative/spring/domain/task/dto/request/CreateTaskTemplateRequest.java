@@ -1,23 +1,22 @@
 package cloudnative.spring.domain.task.dto.request;
 
-import cloudnative.spring.domain.task.enums.Priority;
+import cloudnative.spring.domain.task.enums.TemplateType;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
-import java.time.LocalDateTime;
-
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class CreateTaskRequest {
+public class CreateTaskTemplateRequest {
+    private String templateName;
     private String title;
     private String description;
-    private Priority priority;
     private Integer estimatedPomodoros;
-    private LocalDateTime dueAt;
-    private Boolean isRecurring;
+    private String tags;
+    private Boolean isAiGenerated;
+    private TemplateType templateType;
     private String categoryId;
 }

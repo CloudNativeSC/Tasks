@@ -17,7 +17,7 @@ public class TaskTag {
 
     // ✅ 복합 PK를 임베디드로 보관
     @EmbeddedId
-    private cloudnative.spring.domain.tag.entity.TaskTagId id;
+    private cloudnative.spring.domain.task.entity.TaskTagId id;
 
     // ✅ task_id(FK) ↔ id.taskId 를 연결
     @ManyToOne(fetch = FetchType.LAZY)

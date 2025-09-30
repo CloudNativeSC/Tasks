@@ -12,7 +12,11 @@ import java.time.LocalTime;
 
 @Entity
 @Table(name = "schedule_blocks")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class ScheduleBlock extends BaseTimeEntity {
 
     @Id

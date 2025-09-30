@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
         @Index(name = "idx_work_sessions_start_time", columnList = "start_time")
 })
 @Getter
+@Setter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -59,7 +60,7 @@ public class WorkSession extends BaseTimeEntity {
     private Integer focusScore;
 
     @Column(name = "user_id", nullable = false)
-    private Long userId;
+    private String userId;
 
     @Column(name = "task_id", nullable = false)
     private String taskId;

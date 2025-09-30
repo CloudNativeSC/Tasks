@@ -6,6 +6,7 @@ import cloudnative.spring.domain.task.dto.response.TaskStatusResponse;
 import cloudnative.spring.domain.task.entity.Category;
 import cloudnative.spring.domain.task.entity.Task;
 import cloudnative.spring.domain.task.enums.TaskStatus;
+import cloudnative.spring.domain.task.enums.Priority;
 import cloudnative.spring.domain.task.repository.TaskRepository;
 import cloudnative.spring.domain.task.repository.CategoryRepository;
 import cloudnative.spring.domain.task.dto.request.CreateTaskRequest;
@@ -29,8 +30,8 @@ public class TaskService {
 
     //할 일 생성
 
-    @Transactional
-    public TaskResponse createTask(Long userId, CreateTaskRequest request) {
+    @Transactional //Transaction rollback
+    public TaskResponse createTask(String userId, CreateTaskRequest request) {
         // Category 조회
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new RuntimeException("카테고리를 찾을 수 없습니다: " + request.getCategoryId()));
@@ -128,10 +129,6 @@ public class TaskService {
                 .completionRate(totalTasks > 0 ? (double) completedTasks / totalTasks : 0.0)
                 .build();
     }
-
-
-
-
 
 
 }

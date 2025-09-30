@@ -9,12 +9,13 @@ import cloudnative.spring.global.entity.BaseTimeEntity;
 @Entity
 @Table(name = "task_templates")
 @Getter
+@Setter
 @Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 public class TaskTemplate extends BaseTimeEntity {
 
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Id
     private String id;
 
     @Column(name = "template_name", nullable = false, length = 100)
