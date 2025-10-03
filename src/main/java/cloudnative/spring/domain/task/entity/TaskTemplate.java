@@ -18,6 +18,10 @@ public class TaskTemplate extends BaseTimeEntity {
     @Id
     private String id;
 
+    //userId 필드
+    @Column(name = "user_id", nullable = false)
+    private String userId;
+
     @Column(name = "template_name", nullable = false, length = 100)
     private String templateName;
 

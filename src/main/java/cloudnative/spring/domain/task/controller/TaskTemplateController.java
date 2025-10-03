@@ -1,4 +1,4 @@
-package cloudnative.spring.domain.tasktemplate.controller;
+package cloudnative.spring.domain.task.controller;
 
 import cloudnative.spring.domain.task.dto.request.CreateTaskTemplateRequest;
 import cloudnative.spring.domain.task.dto.response.TaskTemplateResponse;
@@ -7,10 +7,12 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/task-templates")
@@ -20,7 +22,6 @@ public class TaskTemplateController {
 
     private final TaskTemplateService taskTemplateService;
 
-    // 템플릿 생성 POST /api/task-templates
     @Operation(summary = "템플릿 생성", description = "새로운 할 일 템플릿을 생성합니다.")
     @PostMapping
     public ResponseEntity<TaskTemplateResponse> createTaskTemplate(
@@ -31,16 +32,16 @@ public class TaskTemplateController {
         return ResponseEntity.status(201).body(template);
     }
 
-    // 사용자 템플릿 목록 조회 GET /api/task-templates?userId=123
-    @Operation(summary = "템플릿 목록 조회", description = "사용자의 모든 템플릿을 조회합니다.")
+    // 예: GET /api/task-templates?userId=123&page=0&size=20
+    @Operation(summary = "템플릿 목록 조회", description = "사용자의 템플릿을 페이지네이션으로 조회합니다.")
     @GetMapping
-    public ResponseEntity<List<TaskTemplateResponse>> getTaskTemplates(
-            @Parameter(description = "사용자 ID", required = true) @RequestParam String userId) {
-        List<TaskTemplateResponse> templates = taskTemplateService.getTaskTemplatesByUserId(userId);
+    public ResponseEntity<Page<TaskTemplateResponse>> getTaskTemplates(
+            @Parameter(description = "사용자 ID", required = true) @RequestParam String userId,
+            @ParameterObject @PageableDefault(size = 20) Pageable pageable) {
+        Page<TaskTemplateResponse> templates = taskTemplateService.getTaskTemplatesByUserId(userId, pageable);
         return ResponseEntity.ok(templates);
     }
 
-    // 템플릿 상세 조회 GET /api/task-templates/{id}
     @Operation(summary = "템플릿 상세 조회", description = "특정 템플릿의 상세 정보를 조회합니다.")
     @GetMapping("/{id}")
     public ResponseEntity<TaskTemplateResponse> getTaskTemplateById(
@@ -49,7 +50,6 @@ public class TaskTemplateController {
         return ResponseEntity.ok(template);
     }
 
-    // 템플릿으로 할 일 생성 POST /api/task-templates/{id}/create-task
     @Operation(summary = "템플릿으로 할 일 생성", description = "템플릿을 기반으로 실제 할 일을 생성합니다.")
     @PostMapping("/{id}/create-task")
     public ResponseEntity<Void> createTaskFromTemplate(
@@ -59,7 +59,6 @@ public class TaskTemplateController {
         return ResponseEntity.status(201).build();
     }
 
-    // 템플릿 수정 PUT /api/task-templates/{id}
     @Operation(summary = "템플릿 수정", description = "템플릿 정보를 수정합니다.")
     @PutMapping("/{id}")
     public ResponseEntity<TaskTemplateResponse> updateTaskTemplate(
@@ -70,7 +69,6 @@ public class TaskTemplateController {
         return ResponseEntity.ok(template);
     }
 
-    // 템플릿 삭제 DELETE /api/task-templates/{id}
     @Operation(summary = "템플릿 삭제", description = "템플릿을 삭제합니다.")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteTaskTemplate(

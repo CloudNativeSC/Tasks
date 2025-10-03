@@ -23,7 +23,7 @@ public class WorkSessionResponse {
     private String notes;
     private String interruptions;
     private Integer focusScore;
-    private Long userId;
+    private String userId;
     private String taskId;
     private String taskTitle;
     private Integer actualDurationMinutes;
