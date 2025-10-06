@@ -10,6 +10,9 @@ import cloudnative.spring.domain.task.repository.CategoryRepository;
 import cloudnative.spring.domain.task.repository.TaskRepository;
 import cloudnative.spring.domain.task.repository.TaskTemplateRepository;
 import cloudnative.spring.domain.task.service.TaskTemplateService;
+import cloudnative.spring.global.exception.handler.GeneralHandler;
+import cloudnative.spring.global.response.status.ErrorCode;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,7 +34,7 @@ public class TaskTemplateServiceImpl implements TaskTemplateService {
     @Transactional
     public TaskTemplateResponse createTaskTemplate(String userId, CreateTaskTemplateRequest request) {
         Category category = categoryRepository.findById(request.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("카테고리를 찾을 수 없습니다: " + request.getCategoryId()));
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.CATEGORY_NOT_FOUND));
 
         TaskTemplate template = TaskTemplate.builder()
                 .id(UUID.randomUUID().toString())
@@ -61,7 +64,7 @@ public class TaskTemplateServiceImpl implements TaskTemplateService {
     @Override
     public TaskTemplateResponse getTaskTemplateById(String id) {
         TaskTemplate template = taskTemplateRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("템플릿을 찾을 수 없습니다: " + id));
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.TEMPLATE_NOT_FOUND));
         return TaskTemplateResponse.from(template);
     }
 
@@ -69,10 +72,10 @@ public class TaskTemplateServiceImpl implements TaskTemplateService {
     @Transactional
     public TaskTemplateResponse updateTaskTemplate(String id, CreateTaskTemplateRequest request) {
         TaskTemplate template = taskTemplateRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("템플릿을 찾을 수 없습니다: " + id));
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.TEMPLATE_NOT_FOUND));
 
         Category category = categoryRepository.findById(request.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("카테고리를 찾을 수 없습니다: " + request.getCategoryId()));
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.CATEGORY_NOT_FOUND));
 
         // Entity의 업데이트 메서드로 변경 권장
         template.setTemplateName(request.getTemplateName());
@@ -96,7 +99,7 @@ public class TaskTemplateServiceImpl implements TaskTemplateService {
     @Transactional
     public void createTaskFromTemplate(String templateId, String userId) {
         TaskTemplate template = taskTemplateRepository.findById(templateId)
-                .orElseThrow(() -> new RuntimeException("템플릿을 찾을 수 없습니다: " + templateId));
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.TEMPLATE_NOT_FOUND));
 
         // 도메인 로직: 사용 횟수 증가
         template.incrementUsage();

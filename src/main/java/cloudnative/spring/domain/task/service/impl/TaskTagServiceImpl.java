@@ -53,7 +53,7 @@ public class TaskTagServiceImpl implements TaskTagService {
     @Override
     public TaskTagResponse getTaskTagById(String id) {
         Tag tag = tagRepository.findById(Long.parseLong(id))
-                .orElseThrow(() -> new GeneralHandler(ErrorCode.TAG_NOT_FOUND))
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.TAG_NOT_FOUND));
         return TaskTagResponse.from(tag);
     }
 
@@ -61,7 +61,7 @@ public class TaskTagServiceImpl implements TaskTagService {
     @Transactional
     public TaskTagResponse updateTaskTag(String id, CreateTaskTagRequest request) {
         Tag tag = tagRepository.findById(Long.parseLong(id))
-                .orElseThrow(() -> new GeneralHandler(ErrorCode.TAG_NOT_FOUND))
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.TAG_NOT_FOUND));
 
         tag.setName(request.getName());
         tag.setColorCode(request.getColorCode());
