@@ -1,9 +1,10 @@
 package cloudnative.spring.global.response.status;
 
-
+import cloudnative.spring.global.response.BaseErrorCode;
+import cloudnative.spring.global.response.ErrorReasonDto;
 import org.springframework.http.HttpStatus;
 
-public enum ErrorCode {
+public enum ErrorCode implements BaseErrorCode {
 
     // 4xx Client Error
     BAD_REQUEST("400", "잘못된 요청입니다.", HttpStatus.BAD_REQUEST),
@@ -25,7 +26,14 @@ public enum ErrorCode {
     // Business Logic Errors
     USER_NOT_FOUND("404", "사용자를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     DUPLICATE_USER("409", "이미 존재하는 사용자입니다.", HttpStatus.CONFLICT),
-    INVALID_PASSWORD("400", "비밀번호가 올바르지 않습니다.", HttpStatus.BAD_REQUEST);
+    INVALID_PASSWORD("400", "비밀번호가 올바르지 않습니다.", HttpStatus.BAD_REQUEST),
+
+    // Task Domain Errors
+    TASK_NOT_FOUND("TASK404", "할 일을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    CATEGORY_NOT_FOUND("CATEGORY404", "카테고리를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    TEMPLATE_NOT_FOUND("TEMPLATE404", "템플릿을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    SESSION_NOT_FOUND("SESSION404", "작업 세션을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    TAG_NOT_FOUND("TAG404", "태그를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
 
     private final String code;
     private final String message;
@@ -47,5 +55,24 @@ public enum ErrorCode {
 
     public HttpStatus getHttpStatus() {
         return httpStatus;
+    }
+
+    @Override
+    public ErrorReasonDto getReason() {
+        return ErrorReasonDto.builder()
+                .message(message)
+                .code(code)
+                .isSuccess(false)
+                .build();
+    }
+
+    @Override
+    public ErrorReasonDto getReasonHttpStatus() {
+        return ErrorReasonDto.builder()
+                .message(message)
+                .code(code)
+                .isSuccess(false)
+                .httpStatus(httpStatus)
+                .build();
     }
 }
