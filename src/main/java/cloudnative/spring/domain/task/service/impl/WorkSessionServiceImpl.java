@@ -10,6 +10,9 @@ import cloudnative.spring.domain.task.enums.SessionStatus;
 import cloudnative.spring.domain.task.repository.TaskRepository;
 import cloudnative.spring.domain.task.repository.WorkSessionRepository;
 import cloudnative.spring.domain.task.service.WorkSessionService;
+import cloudnative.spring.global.exception.handler.GeneralHandler;
+import cloudnative.spring.global.response.status.ErrorCode;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,8 +34,7 @@ public class WorkSessionServiceImpl implements WorkSessionService {
     @Transactional
     public WorkSessionResponse startWorkSession(String userId, StartWorkSessionRequest request) {
         Task task = taskRepository.findById(request.getTaskId())
-                .orElseThrow(() -> new RuntimeException("할 일을 찾을 수 없습니다: " + request.getTaskId()));
-
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.TASK_NOT_FOUND));
         WorkSession session = WorkSession.builder()
                 .userId(userId)
                 .taskId(request.getTaskId())
@@ -51,7 +53,7 @@ public class WorkSessionServiceImpl implements WorkSessionService {
     @Transactional
     public WorkSessionResponse endWorkSession(String id) {
         WorkSession session = workSessionRepository.findById(Long.parseLong(id))
-                .orElseThrow(() -> new RuntimeException("세션을 찾을 수 없습니다: " + id));
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.SESSION_NOT_FOUND));
 
         session.completeSession();
         return WorkSessionResponse.from(session);
@@ -61,7 +63,7 @@ public class WorkSessionServiceImpl implements WorkSessionService {
     @Transactional
     public WorkSessionResponse pauseWorkSession(String id) {
         WorkSession session = workSessionRepository.findById(Long.parseLong(id))
-                .orElseThrow(() -> new RuntimeException("세션을 찾을 수 없습니다: " + id));
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.SESSION_NOT_FOUND));
 
         session.pauseSession();
         return WorkSessionResponse.from(session);
@@ -71,7 +73,7 @@ public class WorkSessionServiceImpl implements WorkSessionService {
     @Transactional
     public WorkSessionResponse resumeWorkSession(String id) {
         WorkSession session = workSessionRepository.findById(Long.parseLong(id))
-                .orElseThrow(() -> new RuntimeException("세션을 찾을 수 없습니다: " + id));
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.SESSION_NOT_FOUND));
 
         session.setStatus(SessionStatus.ACTIVE);
         return WorkSessionResponse.from(session);
@@ -101,7 +103,7 @@ public class WorkSessionServiceImpl implements WorkSessionService {
     @Override
     public WorkSessionResponse getWorkSessionById(String id) {
         WorkSession session = workSessionRepository.findById(Long.parseLong(id))
-                .orElseThrow(() -> new RuntimeException("세션을 찾을 수 없습니다: " + id));
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.SESSION_NOT_FOUND));
 
         return WorkSessionResponse.from(session);
     }
