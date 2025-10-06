@@ -16,6 +16,7 @@ import cloudnative.spring.global.exception.handler.GeneralHandler;
 import cloudnative.spring.global.response.status.ErrorCode;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -23,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -35,6 +37,8 @@ public class TaskTemplateServiceImpl implements TaskTemplateService {
     @Override
     @Transactional
     public TaskTemplateResponse createTaskTemplate(String userId, CreateTaskTemplateRequest request) {
+        log.info("템플릿 생성 시작 - userId: {}, templateName: {}", userId, request.getTemplateName());
+
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new GeneralHandler(ErrorCode.CATEGORY_NOT_FOUND));
 
@@ -53,29 +57,36 @@ public class TaskTemplateServiceImpl implements TaskTemplateService {
                 .build();
 
         TaskTemplate savedTemplate = taskTemplateRepository.save(template);
+        log.info("템플릿 생성 완료 - templateId: {}", savedTemplate.getId());
         return TaskTemplateResponse.from(savedTemplate);
     }
 
     @Override
     public Page<TaskTemplateResponse> getTaskTemplatesByUserId(String userId, Pageable pageable) {
+        log.debug("사용자 템플릿 목록 조회 - userId: {}", userId);
         Page<TaskTemplate> templates = taskTemplateRepository.findByUserIdOrderByUsageCountDesc(userId, pageable);
         return templates.map(TaskTemplateResponse::from);
     }
 
     @Override
     public TaskTemplateResponse getTaskTemplateById(String id) {
+        log.debug("템플릿 상세 조회 - templateId: {}", id);
         TaskTemplate template = taskTemplateRepository.findById(id)
-                .orElseThrow(() -> new GeneralHandler(ErrorCode.TEMPLATE_NOT_FOUND));
+                .orElseThrow(() -> {
+                    log.error("템플릿을 찾을 수 없음 - templateId: {}", id);
+                    return new GeneralHandler(ErrorCode.TEMPLATE_NOT_FOUND);
+                });
         return TaskTemplateResponse.from(template);
     }
 
     @Override
     @Transactional
     public TaskTemplateResponse updateTaskTemplate(String id, UpdateTaskTemplateRequest request) {
+        log.info("템플릿 수정 시작 - templateId: {}", id);
+
         TaskTemplate template = taskTemplateRepository.findById(id)
                 .orElseThrow(() -> new GeneralHandler(ErrorCode.TEMPLATE_NOT_FOUND));
 
-        // null이 아닌 필드만 업데이트 (부분 업데이트 지원)
         if (request.getTemplateName() != null) {
             template.setTemplateName(request.getTemplateName());
         }
@@ -100,18 +111,22 @@ public class TaskTemplateServiceImpl implements TaskTemplateService {
             template.setCategoryId(request.getCategoryId());
         }
 
+        log.info("템플릿 수정 완료 - templateId: {}", id);
         return TaskTemplateResponse.from(template);
     }
 
     @Override
     @Transactional
     public void deleteTaskTemplate(String id) {
+        log.info("템플릿 삭제 - templateId: {}", id);
         taskTemplateRepository.deleteById(id);
     }
 
     @Override
     @Transactional
     public void createTaskFromTemplate(String templateId, String userId) {
+        log.info("템플릿으로부터 작업 생성 - templateId: {}, userId: {}", templateId, userId);
+
         TaskTemplate template = taskTemplateRepository.findById(templateId)
                 .orElseThrow(() -> new GeneralHandler(ErrorCode.TEMPLATE_NOT_FOUND));
 
@@ -119,10 +134,13 @@ public class TaskTemplateServiceImpl implements TaskTemplateService {
 
         Task task = template.createTaskFromTemplate(userId, UUID.randomUUID().toString());
         taskRepository.save(task);
+
+        log.info("템플릿으로부터 작업 생성 완료 - taskId: {}", task.getId());
     }
 
     @Override
     public Page<TaskTemplateResponse> searchByCategoryAndType(String categoryId, TemplateType type, Pageable pageable) {
+        log.debug("템플릿 검색 - categoryId: {}, type: {}", categoryId, type);
         Page<TaskTemplate> templates = taskTemplateRepository.findByCategoryIdAndTemplateType(categoryId, type, pageable);
         return templates.map(TaskTemplateResponse::from);
     }
