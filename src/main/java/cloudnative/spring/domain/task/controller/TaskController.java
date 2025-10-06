@@ -28,7 +28,7 @@ public class TaskController {
     public ResponseEntity<TaskResponse> createTask(
             @Parameter(description = "사용자 ID", required = true) @RequestParam String userId,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "할 일 생성 정보")
-            @RequestBody CreateTaskRequest request) {
+            @jakarta.validation.Valid @RequestBody CreateTaskRequest request) {
         TaskResponse task = taskService.createTask(userId, request);
         return ResponseEntity.status(201).body(task);
     }

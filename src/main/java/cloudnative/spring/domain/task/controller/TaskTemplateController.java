@@ -1,8 +1,10 @@
 package cloudnative.spring.domain.task.controller;
 
 import cloudnative.spring.domain.task.dto.request.CreateTaskTemplateRequest;
+import cloudnative.spring.domain.task.dto.request.UpdateTaskTemplateRequest;
 import cloudnative.spring.domain.task.dto.response.TaskTemplateResponse;
 import cloudnative.spring.domain.task.service.TaskTemplateService;
+import cloudnative.spring.domain.task.dto.request.UpdateTaskTemplateRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,7 +29,7 @@ public class TaskTemplateController {
     public ResponseEntity<TaskTemplateResponse> createTaskTemplate(
             @Parameter(description = "사용자 ID", required = true) @RequestParam String userId,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "템플릿 생성 정보")
-            @RequestBody CreateTaskTemplateRequest request) {
+            @jakarta.validation.Valid @RequestBody CreateTaskTemplateRequest request) {
         TaskTemplateResponse template = taskTemplateService.createTaskTemplate(userId, request);
         return ResponseEntity.status(201).body(template);
     }
@@ -64,7 +66,7 @@ public class TaskTemplateController {
     public ResponseEntity<TaskTemplateResponse> updateTaskTemplate(
             @Parameter(description = "템플릿 ID", required = true) @PathVariable String id,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "템플릿 수정 정보")
-            @RequestBody CreateTaskTemplateRequest request) {
+            @jakarta.validation.Valid @RequestBody UpdateTaskTemplateRequest request) {
         TaskTemplateResponse template = taskTemplateService.updateTaskTemplate(id, request);
         return ResponseEntity.ok(template);
     }

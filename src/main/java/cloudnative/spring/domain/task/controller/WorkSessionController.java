@@ -28,7 +28,7 @@ public class WorkSessionController {
     public ResponseEntity<WorkSessionResponse> startWorkSession(
             @Parameter(description = "사용자 ID", required = true) @RequestParam String userId,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "작업 세션 시작 정보")
-            @RequestBody StartWorkSessionRequest request) {
+            @jakarta.validation.Valid @RequestBody StartWorkSessionRequest request) {
         WorkSessionResponse session = workSessionService.startWorkSession(userId, request);
         return ResponseEntity.status(201).body(session);
     }

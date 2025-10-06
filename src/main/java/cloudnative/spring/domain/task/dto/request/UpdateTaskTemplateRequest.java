@@ -11,13 +11,11 @@ import lombok.AllArgsConstructor;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class CreateTaskTemplateRequest {
+public class UpdateTaskTemplateRequest {
     
-    @NotBlank(message = "템플릿 이름은 필수입니다.")
     @Size(min = 1, max = 100, message = "템플릿 이름은 1자 이상 100자 이하여야 합니다.")
     private String templateName;
     
-    @NotBlank(message = "작업 제목은 필수입니다.")
     @Size(min = 1, max = 200, message = "작업 제목은 1자 이상 200자 이하여야 합니다.")
     private String title;
     
@@ -31,11 +29,7 @@ public class CreateTaskTemplateRequest {
     @Size(max = 500, message = "태그는 500자를 초과할 수 없습니다.")
     private String tags;
     
-    private Boolean isAiGenerated;
-    
-    @NotNull(message = "템플릿 타입은 필수입니다.")
     private TemplateType templateType;
     
-    @NotBlank(message = "카테고리 ID는 필수입니다.")
     private String categoryId;
 }
