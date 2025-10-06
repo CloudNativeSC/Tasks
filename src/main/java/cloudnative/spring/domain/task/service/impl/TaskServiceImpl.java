@@ -9,6 +9,9 @@ import cloudnative.spring.domain.task.enums.TaskStatus;
 import cloudnative.spring.domain.task.repository.CategoryRepository;
 import cloudnative.spring.domain.task.repository.TaskRepository;
 import cloudnative.spring.domain.task.service.TaskService;
+import cloudnative.spring.global.exception.handler.GeneralHandler;
+import cloudnative.spring.global.response.status.ErrorCode;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +33,7 @@ public class TaskServiceImpl implements TaskService {
     @Transactional
     public TaskResponse createTask(String userId, CreateTaskRequest request) {
         Category category = categoryRepository.findById(request.getCategoryId())
-                .orElseThrow(() -> new RuntimeException("카테고리를 찾을 수 없습니다: " + request.getCategoryId()));
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.CATEGORY_NOT_FOUND));
 
         Task task = Task.builder()
                 .id(UUID.randomUUID().toString())
@@ -68,7 +71,7 @@ public class TaskServiceImpl implements TaskService {
     @Override
     public TaskResponse getTaskById(String taskId) {
         Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new RuntimeException("할 일을 찾을 수 없습니다: " + taskId));
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.TASK_NOT_FOUND));
         return TaskResponse.from(task);
     }
 
@@ -76,7 +79,7 @@ public class TaskServiceImpl implements TaskService {
     @Transactional
     public TaskResponse completeTask(String taskId) {
         Task task = taskRepository.findById(taskId)
-                .orElseThrow(() -> new RuntimeException("할 일을 찾을 수 없습니다: " + taskId));
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.TASK_NOT_FOUND));
         task.markAsCompleted();
         Task savedTask = taskRepository.save(task);
         return TaskResponse.from(savedTask);
