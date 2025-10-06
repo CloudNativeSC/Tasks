@@ -9,6 +9,9 @@ import cloudnative.spring.domain.task.entity.TaskTagId;
 import cloudnative.spring.domain.task.repository.TagRepository;
 import cloudnative.spring.domain.task.repository.TaskTagRepository;
 import cloudnative.spring.domain.task.service.TaskTagService;
+import cloudnative.spring.global.exception.handler.GeneralHandler;
+import cloudnative.spring.global.response.status.ErrorCode;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -50,7 +53,7 @@ public class TaskTagServiceImpl implements TaskTagService {
     @Override
     public TaskTagResponse getTaskTagById(String id) {
         Tag tag = tagRepository.findById(Long.parseLong(id))
-                .orElseThrow(() -> new RuntimeException("태그를 찾을 수 없습니다: " + id));
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.TAG_NOT_FOUND))
         return TaskTagResponse.from(tag);
     }
 
@@ -58,7 +61,7 @@ public class TaskTagServiceImpl implements TaskTagService {
     @Transactional
     public TaskTagResponse updateTaskTag(String id, CreateTaskTagRequest request) {
         Tag tag = tagRepository.findById(Long.parseLong(id))
-                .orElseThrow(() -> new RuntimeException("태그를 찾을 수 없습니다: " + id));
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.TAG_NOT_FOUND))
 
         tag.setName(request.getName());
         tag.setColorCode(request.getColorCode());
