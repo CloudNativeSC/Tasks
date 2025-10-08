@@ -35,6 +35,7 @@ public enum ErrorCode implements BaseErrorCode {
     SESSION_NOT_FOUND("SESSION404", "작업 세션을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
     TAG_NOT_FOUND("TAG404", "태그를 찾을 수 없습니다.", HttpStatus.NOT_FOUND);
 
+
     private final String code;
     private final String message;
     private final HttpStatus httpStatus;

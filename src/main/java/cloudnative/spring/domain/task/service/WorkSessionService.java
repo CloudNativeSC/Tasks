@@ -28,4 +28,16 @@ public interface WorkSessionService {
     List<WorkSession> listByRange(String userId, LocalDateTime from, LocalDateTime to);
     List<WorkSession> listByStatus(String userId, SessionStatus status);
     List<WorkSession> listByTask(String taskId);
+
+    // 작업 시작 (새로운 sessionId 생성)
+    WorkSessionResponse startTaskSession(String userId, String taskId);
+
+    // 뽀모도로 완료 (다음 세션 자동 생성)
+    WorkSessionResponse completePomodoro(String workSessionId);
+
+    // 작업 전체 완료 (sessionId 그룹 전체 완료)
+    WorkSessionResponse completeTaskSession(Long sessionId, String userId);
+
+    // sessionId로 세션 그룹 조회
+    List<WorkSessionResponse> getSessionsBySessionId(Long sessionId);
 }

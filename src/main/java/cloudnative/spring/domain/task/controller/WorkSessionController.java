@@ -22,6 +22,48 @@ public class WorkSessionController {
 
     private final WorkSessionService workSessionService;
 
+    // ========== 뽀모도로 사이클 관리 ==========
+
+    // 작업 시작 (새로운 sessionId 생성)
+    @Operation(summary = "작업 시작", description = "새로운 작업을 시작하고 sessionId를 생성합니다.")
+    @PostMapping("/start-task")
+    public ResponseEntity<WorkSessionResponse> startTaskSession(
+            @Parameter(description = "사용자 ID", required = true) @RequestParam String userId,
+            @Parameter(description = "작업 ID", required = true) @RequestParam String taskId) {
+        WorkSessionResponse session = workSessionService.startTaskSession(userId, taskId);
+        return ResponseEntity.status(201).body(session);
+    }
+
+    // 뽀모도로 완료 (다음 세션 자동 생성)
+    @Operation(summary = "뽀모도로 완료", description = "현재 뽀모도로를 완료하고 다음 세션을 자동 생성합니다.")
+    @PatchMapping("/{id}/complete-pomodoro")
+    public ResponseEntity<WorkSessionResponse> completePomodoro(
+            @Parameter(description = "세션 ID", required = true) @PathVariable String id) {
+        WorkSessionResponse session = workSessionService.completePomodoro(id);
+        return ResponseEntity.ok(session);
+    }
+
+    // 작업 전체 완료
+    @Operation(summary = "작업 전체 완료", description = "sessionId에 해당하는 모든 세션과 작업을 완료 처리합니다.")
+    @PatchMapping("/session/{sessionId}/complete-task")
+    public ResponseEntity<WorkSessionResponse> completeTaskSession(
+            @Parameter(description = "세션 그룹 ID", required = true) @PathVariable Long sessionId,
+            @Parameter(description = "사용자 ID", required = true) @RequestParam String userId) {
+        WorkSessionResponse session = workSessionService.completeTaskSession(sessionId, userId);
+        return ResponseEntity.ok(session);
+    }
+
+    // sessionId로 세션 목록 조회
+    @Operation(summary = "세션 그룹 조회", description = "같은 sessionId를 가진 모든 세션을 조회합니다.")
+    @GetMapping("/session/{sessionId}")
+    public ResponseEntity<List<WorkSessionResponse>> getSessionsBySessionId(
+            @Parameter(description = "세션 그룹 ID", required = true) @PathVariable Long sessionId) {
+        List<WorkSessionResponse> sessions = workSessionService.getSessionsBySessionId(sessionId);
+        return ResponseEntity.ok(sessions);
+    }
+
+    // ========== 기존 세션 관리 ==========
+
     // 작업 세션 시작 POST /api/work-sessions/start
     @Operation(summary = "작업 세션 시작", description = "새로운 작업 세션을 시작합니다.")
     @PostMapping("/start")

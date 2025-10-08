@@ -6,6 +6,8 @@ import cloudnative.spring.domain.task.dto.response.WorkSessionStatsResponse;
 import cloudnative.spring.domain.task.entity.Task;
 import cloudnative.spring.domain.task.entity.WorkSession;
 import cloudnative.spring.domain.task.enums.SessionStatus;
+import cloudnative.spring.domain.task.enums.SessionType;
+import cloudnative.spring.domain.task.enums.TaskStatus;
 import cloudnative.spring.domain.task.repository.TaskRepository;
 import cloudnative.spring.domain.task.repository.WorkSessionRepository;
 import cloudnative.spring.domain.task.service.WorkSessionService;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -40,9 +43,13 @@ public class WorkSessionServiceImpl implements WorkSessionService {
         Task task = taskRepository.findById(request.getTaskId())
                 .orElseThrow(() -> new GeneralHandler(ErrorCode.TASK_NOT_FOUND));
 
+        // sessionId 생성 (타임스탬프 기반)
+        Long newSessionId = System.currentTimeMillis();
+
         WorkSession session = WorkSession.builder()
                 .userId(userId)
                 .taskId(request.getTaskId())
+                .sessionId(newSessionId)  // sessionId 추가
                 .sessionType(request.getSessionType())
                 .durationMinutes(request.getDurationMinutes())
                 .startTime(LocalDateTime.now())
@@ -51,8 +58,120 @@ public class WorkSessionServiceImpl implements WorkSessionService {
                 .build();
 
         WorkSession savedSession = workSessionRepository.save(session);
-        log.info("작업 세션 시작 완료 - sessionId: {}", savedSession.getId());
+        log.info("작업 세션 시작 완료 - workSessionId: {}, sessionId: {}", savedSession.getId(), newSessionId);
         return WorkSessionResponse.from(savedSession);
+    }
+
+    @Override
+    @Transactional
+    public WorkSessionResponse startTaskSession(String userId, String taskId) {
+        log.info("작업 세션 그룹 시작 - userId: {}, taskId: {}", userId, taskId);
+
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.TASK_NOT_FOUND));
+
+        // 새로운 sessionId 생성 (타임스탬프 기반)
+        Long newSessionId = System.currentTimeMillis();
+
+        // 첫 번째 작업 세션 시작 (25분 작업)
+        WorkSession session = WorkSession.builder()
+                .userId(userId)
+                .taskId(taskId)
+                .sessionId(newSessionId)
+                .sessionType(SessionType.WORK)
+                .durationMinutes(25)
+                .startTime(LocalDateTime.now())
+                .status(SessionStatus.ACTIVE)
+                .build();
+
+        // Task 상태를 IN_PROGRESS로 변경
+        task.updateStatus(TaskStatus.IN_PROGRESS);
+        taskRepository.save(task);
+
+        WorkSession savedSession = workSessionRepository.save(session);
+        log.info("작업 세션 그룹 시작 완료 - sessionId: {}, workSessionId: {}",
+                newSessionId, savedSession.getId());
+        return WorkSessionResponse.from(savedSession);
+    }
+
+    @Override
+    @Transactional
+    public WorkSessionResponse completePomodoro(String workSessionId) {
+        log.info("뽀모도로 완료 - workSessionId: {}", workSessionId);
+
+        WorkSession currentSession = workSessionRepository.findById(Long.parseLong(workSessionId))
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.SESSION_NOT_FOUND));
+
+        // 현재 세션 완료 처리
+        currentSession.completeSession();
+        workSessionRepository.save(currentSession);
+
+        // 작업 세션이었다면 자동으로 휴식 세션 생성
+        if (currentSession.getSessionType() == SessionType.WORK) {
+            WorkSession breakSession = WorkSession.builder()
+                    .userId(currentSession.getUserId())
+                    .taskId(currentSession.getTaskId())
+                    .sessionId(currentSession.getSessionId())  // 같은 sessionId
+                    .sessionType(SessionType.SHORT_BREAK)
+                    .durationMinutes(5)
+                    .startTime(LocalDateTime.now())
+                    .status(SessionStatus.ACTIVE)
+                    .build();
+
+            workSessionRepository.save(breakSession);
+            log.info("휴식 세션 자동 생성 - sessionId: {}", currentSession.getSessionId());
+        }
+
+        log.info("뽀모도로 완료 처리 완료 - sessionId: {}", currentSession.getSessionId());
+        return WorkSessionResponse.from(currentSession);
+    }
+
+    @Override
+    @Transactional
+    public WorkSessionResponse completeTaskSession(Long sessionId, String userId) {
+        log.info("작업 세션 그룹 완료 - sessionId: {}, userId: {}", sessionId, userId);
+
+        // 해당 sessionId의 모든 WorkSession 조회
+        List<WorkSession> sessions = workSessionRepository.findBySessionId(sessionId);
+
+        if (sessions.isEmpty()) {
+            throw new GeneralHandler(ErrorCode.SESSION_NOT_FOUND);
+        }
+
+        // 권한 확인
+        WorkSession firstSession = sessions.get(0);
+        if (!firstSession.getUserId().equals(userId)) {
+            throw new GeneralHandler(ErrorCode.FORBIDDEN);
+            //throw new GeneralHandler(ErrorCode.UNAUTHORIZED);
+        }
+
+        // 모든 세션 완료 처리
+        sessions.forEach(session -> {
+            if (session.getStatus() != SessionStatus.COMPLETED) {
+                session.completeSession();
+            }
+        });
+
+        // Task 완료 처리
+        Task task = taskRepository.findById(firstSession.getTaskId())
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.TASK_NOT_FOUND));
+
+        task.markAsCompleted();
+        taskRepository.save(task);
+
+        log.info("작업 세션 그룹 완료 처리 완료 - sessionId: {}, 완료된 세션 수: {}",
+                sessionId, sessions.size());
+
+        return WorkSessionResponse.from(firstSession);
+    }
+
+    @Override
+    public List<WorkSessionResponse> getSessionsBySessionId(Long sessionId) {
+        log.debug("세션 그룹 조회 - sessionId: {}", sessionId);
+        List<WorkSession> sessions = workSessionRepository.findBySessionId(sessionId);
+        return sessions.stream()
+                .map(WorkSessionResponse::from)
+                .collect(Collectors.toList());
     }
 
     @Override
