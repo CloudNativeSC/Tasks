@@ -3,15 +3,19 @@ package cloudnative.spring.domain.task.controller;
 import cloudnative.spring.domain.task.dto.request.CreateTaskRequest;
 import cloudnative.spring.domain.task.dto.response.TaskResponse;
 import cloudnative.spring.domain.task.dto.response.TaskStatusResponse;
+import cloudnative.spring.domain.task.dto.response.TimeSlotResponse;
 import cloudnative.spring.domain.task.enums.TaskStatus;
 import cloudnative.spring.domain.task.service.TaskService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @RestController
@@ -21,6 +25,45 @@ import java.util.List;
 public class TaskController {
 
     private final TaskService taskService;
+
+    // ========== 타임라인 스케줄링 ==========
+
+    // 작업 스케줄 설정
+    @Operation(summary = "작업 스케줄 설정", description = "작업을 특정 시간대에 배치합니다.")
+    @PatchMapping("/{id}/schedule")
+    public ResponseEntity<TaskResponse> scheduleTask(
+            @Parameter(description = "작업 ID", required = true) @PathVariable String id,
+            @Parameter(description = "시작 시간 (yyyy-MM-dd'T'HH:mm:ss)", required = true)
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
+            @Parameter(description = "종료 시간 (yyyy-MM-dd'T'HH:mm:ss)", required = true)
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime) {
+        TaskResponse task = taskService.scheduleTask(id, startTime, endTime);
+        return ResponseEntity.ok(task);
+    }
+
+    // 날짜별 스케줄된 작업 조회
+    @Operation(summary = "날짜별 스케줄된 작업 조회", description = "특정 날짜에 스케줄된 작업 목록을 시간순으로 조회합니다.")
+    @GetMapping("/scheduled")
+    public ResponseEntity<List<TaskResponse>> getScheduledTasks(
+            @Parameter(description = "사용자 ID", required = true) @RequestParam String userId,
+            @Parameter(description = "조회 날짜 (yyyy-MM-dd)", required = true)
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        List<TaskResponse> tasks = taskService.getScheduledTasksByDate(userId, date);
+        return ResponseEntity.ok(tasks);
+    }
+
+    // 빈 시간 슬롯 조회
+    @Operation(summary = "빈 시간 슬롯 조회", description = "특정 날짜의 작업이 없는 시간대를 조회합니다.")
+    @GetMapping("/available-slots")
+    public ResponseEntity<List<TimeSlotResponse>> getAvailableTimeSlots(
+            @Parameter(description = "사용자 ID", required = true) @RequestParam String userId,
+            @Parameter(description = "조회 날짜 (yyyy-MM-dd)", required = true)
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
+        List<TimeSlotResponse> slots = taskService.getAvailableTimeSlots(userId, date);
+        return ResponseEntity.ok(slots);
+    }
+
+    // ========== 기존 작업 관리 ==========
 
     // 할 일 생성 POST /api/tasks
     @Operation(summary = "할 일 생성", description = "새로운 할 일을 생성합니다.")

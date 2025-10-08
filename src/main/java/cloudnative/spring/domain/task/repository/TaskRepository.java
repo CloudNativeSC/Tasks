@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -33,6 +34,12 @@ public interface TaskRepository extends JpaRepository<Task, String> {
     long countByUserId(String userId);
     long countByUserIdAndStatus(String userId, TaskStatus status);
     long countByUserIdAndCategoryId(String userId, String categoryId);
+
+    /**
+     * 특정 날짜에 스케줄된 할일 조회 (시간순 정렬)
+     */
+    List<Task> findByUserIdAndScheduledDateOrderByScheduledStartTimeAsc(String userId, LocalDate date);
+
 
     // === 서비스에서 사용하는 커스텀 쿼리 ===
 

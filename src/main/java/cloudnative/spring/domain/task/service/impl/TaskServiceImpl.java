@@ -3,6 +3,7 @@ package cloudnative.spring.domain.task.service.impl;
 import cloudnative.spring.domain.task.dto.request.CreateTaskRequest;
 import cloudnative.spring.domain.task.dto.response.TaskResponse;
 import cloudnative.spring.domain.task.dto.response.TaskStatusResponse;
+import cloudnative.spring.domain.task.dto.response.TimeSlotResponse;
 import cloudnative.spring.domain.task.entity.Category;
 import cloudnative.spring.domain.task.entity.Task;
 import cloudnative.spring.domain.task.enums.TaskStatus;
@@ -17,7 +18,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -138,5 +142,73 @@ public class TaskServiceImpl implements TaskService {
                 .todoTasks(todoTasks)
                 .completionRate(totalTasks > 0 ? (double) completedTasks / totalTasks : 0.0)
                 .build();
+    }
+
+    // ========== 타임라인 스케줄링 ==========
+
+    @Override
+    @Transactional
+    public TaskResponse scheduleTask(String taskId, LocalDateTime startTime, LocalDateTime endTime) {
+        log.info("작업 스케줄 설정 - taskId: {}, startTime: {}, endTime: {}", taskId, startTime, endTime);
+
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.TASK_NOT_FOUND));
+
+        // 스케줄 정보 설정
+        task.setScheduledDate(startTime.toLocalDate());
+        task.setScheduledStartTime(startTime.toLocalTime());
+        task.setScheduledEndTime(endTime.toLocalTime());
+
+        Task savedTask = taskRepository.save(task);
+        log.info("작업 스케줄 설정 완료 - taskId: {}", taskId);
+        return TaskResponse.from(savedTask);
+    }
+
+    @Override
+    public List<TaskResponse> getScheduledTasksByDate(String userId, LocalDate date) {
+        log.debug("날짜별 스케줄된 작업 조회 - userId: {}, date: {}", userId, date);
+
+        List<Task> tasks = taskRepository.findByUserIdAndScheduledDateOrderByScheduledStartTimeAsc(userId, date);
+        log.debug("스케줄된 작업 수: {}", tasks.size());
+
+        return tasks.stream()
+                .map(TaskResponse::from)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<TimeSlotResponse> getAvailableTimeSlots(String userId, LocalDate date) {
+        log.debug("빈 시간 슬롯 조회 - userId: {}, date: {}", userId, date);
+
+        // 해당 날짜의 스케줄된 작업들 조회
+        List<Task> scheduledTasks = taskRepository.findByUserIdAndScheduledDateOrderByScheduledStartTimeAsc(userId, date);
+
+        List<TimeSlotResponse> availableSlots = new ArrayList<>();
+        LocalTime currentTime = LocalTime.of(6, 0);   // 시작: 06:00
+        LocalTime endOfDay = LocalTime.of(23, 59);    // 종료: 23:59
+
+        // 각 스케줄된 작업 사이의 빈 시간 찾기
+        for (Task task : scheduledTasks) {
+            LocalTime taskStart = task.getScheduledStartTime();
+            LocalTime taskEnd = task.getScheduledEndTime();
+
+            // 현재 시간과 작업 시작 시간 사이에 빈 시간이 있으면
+            if (currentTime.isBefore(taskStart)) {
+                availableSlots.add(new TimeSlotResponse(currentTime, taskStart));
+                log.debug("빈 시간 슬롯 발견 - {} ~ {}", currentTime, taskStart);
+            }
+
+            // 다음 검사 시작 시간 = 현재 작업 종료 시간
+            currentTime = taskEnd;
+        }
+
+        // 마지막 작업 이후 하루 종료까지 빈 시간
+        if (currentTime.isBefore(endOfDay)) {
+            availableSlots.add(new TimeSlotResponse(currentTime, endOfDay));
+            log.debug("마지막 빈 시간 슬롯 - {} ~ {}", currentTime, endOfDay);
+        }
+
+        log.debug("총 빈 시간 슬롯 수: {}", availableSlots.size());
+        return availableSlots;
     }
 }
