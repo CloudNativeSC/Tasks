@@ -1,14 +1,16 @@
 package cloudnative.spring.domain.task.entity;
 
 import cloudnative.spring.global.entity.BaseTimeEntity;
-import jakarta.persistence.Entity;
 import jakarta.persistence.*;
-
-
-import java.time.LocalDateTime;
+import lombok.*;
 
 @Entity
 @Table(name = "task_reflections")
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor
 public class TaskReflection extends BaseTimeEntity {
 
     @Id
@@ -25,11 +27,11 @@ public class TaskReflection extends BaseTimeEntity {
     private Long workSessionId;
 
     @Column(name = "warmup_note", columnDefinition = "TEXT")
-    private String warmupNote;  // 시작 전 다짐
+    private String warmupNote;
 
     @Column(name = "cooldown_note", columnDefinition = "TEXT")
-    private String cooldownNote;  // 완료 후 후기
+    private String cooldownNote;
 
     @Column(name = "category_name")
-    private String categoryName;  // 나중에 카테고리별 모아보기용
+    private String categoryName;
 }
