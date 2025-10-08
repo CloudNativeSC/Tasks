@@ -5,7 +5,9 @@ import jakarta.persistence.*;
 import lombok.Builder;
 
 import java.time.LocalDateTime;
+import cloudnative.spring.domain.task.enums.HabitType;
 
+@Builder
 @Entity
 @Table(name = "micro_habits")
 public class MicroHabit extends BaseTimeEntity {
