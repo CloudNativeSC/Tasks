@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Builder;
 
 import java.time.LocalDateTime;
+import cloudnative.spring.domain.task.enums.MessageType;
 
 
 @Entity
