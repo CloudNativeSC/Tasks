@@ -1,6 +1,7 @@
 package cloudnative.spring.domain.task.controller;
 
 import cloudnative.spring.domain.task.dto.request.CreateTaskRequest;
+import cloudnative.spring.domain.task.dto.response.Ai.AiTaskRecommendationResponse;
 import cloudnative.spring.domain.task.dto.response.TaskResponse;
 import cloudnative.spring.domain.task.dto.response.TaskStatusResponse;
 import cloudnative.spring.domain.task.dto.response.TimeSlotResponse;
@@ -135,5 +136,28 @@ public class TaskController {
             @Parameter(description = "사용자 ID", required = true) @RequestParam String userId) {
         TaskStatusResponse stats = taskService.getTaskStats(userId);
         return ResponseEntity.ok(stats);
+    }
+
+    // ========== AI 추천 ==========
+
+    // AI 기반 할 일 추천
+    @Operation(
+            summary = "AI 추천 할 일",
+            description = "LightGBM 모델 기반으로 템플릿 Task를 추천합니다. " +
+                    "추천받은 Task를 선택하여 실제 할일로 등록할 수 있습니다."
+    )
+    @GetMapping("/ai-recommendations")
+    public ResponseEntity<AiTaskRecommendationResponse> getAiRecommendations(
+            @Parameter(description = "사용자 ID", required = true)
+            @RequestParam String userId,
+            @Parameter(description = "사용 가능한 시간(분)", required = true, example = "60")
+            @RequestParam Integer availableMinutes) {
+
+        if (availableMinutes <= 0) {
+            throw new IllegalArgumentException("사용 가능한 시간은 0보다 커야 합니다.");
+        }
+
+        AiTaskRecommendationResponse response = taskService.getAiRecommendations(userId, availableMinutes);
+        return ResponseEntity.ok(response);
     }
 }

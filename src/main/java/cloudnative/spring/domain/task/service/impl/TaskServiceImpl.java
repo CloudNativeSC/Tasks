@@ -1,15 +1,19 @@
 package cloudnative.spring.domain.task.service.impl;
 
+import cloudnative.spring.domain.task.client.AiRecommendationClient;
 import cloudnative.spring.domain.task.dto.request.CreateTaskRequest;
 import cloudnative.spring.domain.task.dto.response.TaskResponse;
 import cloudnative.spring.domain.task.dto.response.TaskStatusResponse;
 import cloudnative.spring.domain.task.dto.response.TimeSlotResponse;
+import cloudnative.spring.domain.task.dto.response.Ai.AiTaskRecommendationResponse;
 import cloudnative.spring.domain.task.entity.Category;
 import cloudnative.spring.domain.task.entity.Task;
 import cloudnative.spring.domain.task.enums.TaskStatus;
 import cloudnative.spring.domain.task.repository.CategoryRepository;
 import cloudnative.spring.domain.task.repository.TaskRepository;
 import cloudnative.spring.domain.task.service.TaskService;
+import cloudnative.spring.domain.task.dto.request.Ai.AiRecommendationRequest;
+import cloudnative.spring.domain.task.dto.response.Ai.AiRecommendationResponse;
 import cloudnative.spring.global.exception.handler.GeneralHandler;
 import cloudnative.spring.global.response.status.ErrorCode;
 
@@ -34,6 +38,7 @@ public class TaskServiceImpl implements TaskService {
 
     private final TaskRepository taskRepository;
     private final CategoryRepository categoryRepository;
+    private final AiRecommendationClient aiRecommendationClient;
 
     @Override
     @Transactional
@@ -210,5 +215,90 @@ public class TaskServiceImpl implements TaskService {
 
         log.debug("총 빈 시간 슬롯 수: {}", availableSlots.size());
         return availableSlots;
+    }
+
+    // ========== AI 추천 ==========
+
+    @Override
+    public AiTaskRecommendationResponse getAiRecommendations(String userId, Integer availableMinutes) {
+        log.info("AI 추천 요청 - userId: {}, availableMinutes: {}분", userId, availableMinutes);
+
+        // 1. 현재 시간/요일 계산
+        LocalDateTime now = LocalDateTime.now();
+        int currentHour = now.getHour();
+        int currentWeekday = now.getDayOfWeek().getValue() - 1;  // 0=Monday, 6=Sunday
+
+        log.debug("현재 시간 정보 - hour: {}, weekday: {}", currentHour, currentWeekday);
+
+        // 2. FastAPI 요청 생성
+        AiRecommendationRequest aiRequest = AiRecommendationRequest.builder()
+                .userId(parseUserId(userId))
+                .availableMinutes(availableMinutes)
+                .numRecommendations(10)  // 10개 추천
+                .startHour(currentHour)
+                .weekday(currentWeekday)
+                .fillTime(false)
+                .build();
+
+        // 3. FastAPI 호출
+        AiRecommendationResponse aiResponse;
+        try {
+            aiResponse = aiRecommendationClient.getRecommendations(aiRequest);
+            log.info("FastAPI 응답 수신 - 추천 개수: {}, 남은 시간: {}분",
+                    aiResponse.getRecommendations().size(),
+                    aiResponse.getRemainingMinutes());
+        } catch (Exception e) {
+            log.error("AI 추천 서버 통신 실패 - userId: {}", userId, e);
+            throw new RuntimeException("AI 추천 서버와 통신할 수 없습니다. 잠시 후 다시 시도해주세요.", e);
+        }
+
+        // 4. FastAPI 응답을 프론트 형식으로 변환
+        List<AiTaskRecommendationResponse.RecommendedTask> recommendations =
+                aiResponse.getRecommendations().stream()
+                        .map(aiTask -> AiTaskRecommendationResponse.RecommendedTask.builder()
+                                .taskName(aiTask.getTaskName())
+                                .taskCategory(aiTask.getTaskCategory())
+                                .taskDuration(aiTask.getTaskDuration())
+                                .score(aiTask.getScore())
+                                .tags(aiTask.getTags() != null ? aiTask.getTags() : List.of())
+                                .build())
+                        .collect(Collectors.toList());
+
+        List<AiTaskRecommendationResponse.RecommendedTask> packedRecommendations =
+                aiResponse.getPackedRecommendations().stream()
+                        .map(aiTask -> AiTaskRecommendationResponse.RecommendedTask.builder()
+                                .taskName(aiTask.getTaskName())
+                                .taskCategory(aiTask.getTaskCategory())
+                                .taskDuration(aiTask.getTaskDuration())
+                                .score(aiTask.getScore())
+                                .tags(aiTask.getTags() != null ? aiTask.getTags() : List.of())
+                                .build())
+                        .collect(Collectors.toList());
+
+        log.info("AI 추천 완료 - 추천: {}개, 시간 채우기: {}개",
+                recommendations.size(), packedRecommendations.size());
+
+        // 5. 응답 생성
+        return AiTaskRecommendationResponse.builder()
+                .userId(aiResponse.getUserId())
+                .availableMinutes(aiResponse.getAvailableMinutes())
+                .remainingMinutes(aiResponse.getRemainingMinutes())
+                .fillTime(aiResponse.getFillTime())
+                .recommendations(recommendations)
+                .packedRecommendations(packedRecommendations)
+                .build();
+    }
+
+    /**
+     * userId를 Integer로 변환
+     * 실패 시 0 반환
+     */
+    private Integer parseUserId(String userId) {
+        try {
+            return Integer.parseInt(userId);
+        } catch (NumberFormatException e) {
+            log.warn("userId 변환 실패, 0으로 대체 - userId: {}", userId);
+            return 0;
+        }
     }
 }

@@ -4,6 +4,7 @@ import cloudnative.spring.domain.task.dto.request.CreateTaskRequest;
 import cloudnative.spring.domain.task.dto.response.TaskResponse;
 import cloudnative.spring.domain.task.dto.response.TaskStatusResponse;
 import cloudnative.spring.domain.task.dto.response.TimeSlotResponse;
+import cloudnative.spring.domain.task.dto.response.Ai.AiTaskRecommendationResponse;
 import cloudnative.spring.domain.task.enums.TaskStatus;
 
 import java.time.LocalDate;
@@ -26,5 +27,14 @@ public interface TaskService {
     TaskResponse scheduleTask(String taskId, LocalDateTime startTime, LocalDateTime endTime);
     List<TaskResponse> getScheduledTasksByDate(String userId, LocalDate date);
     List<TimeSlotResponse> getAvailableTimeSlots(String userId, LocalDate date);
+
+    /**
+     * AI 기반 Task 추천
+     * @param userId 사용자 ID
+     * @param availableMinutes 사용 가능한 시간(분)
+     * @return 추천 Task 리스트 (점수순)
+     */
+    AiTaskRecommendationResponse getAiRecommendations(String userId, Integer availableMinutes);
+
 }
 
