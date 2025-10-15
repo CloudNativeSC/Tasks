@@ -2,6 +2,7 @@ package cloudnative.spring.domain.task.service;
 
 import cloudnative.spring.domain.task.dto.request.CreateTaskRequest;
 import cloudnative.spring.domain.task.dto.response.TaskResponse;
+import cloudnative.spring.domain.task.dto.response.TaskStatsEnhancedResponse;
 import cloudnative.spring.domain.task.dto.response.TaskStatusResponse;
 import cloudnative.spring.domain.task.dto.response.TimeSlotResponse;
 import cloudnative.spring.domain.task.dto.response.Ai.AiTaskRecommendationResponse;
@@ -36,5 +37,7 @@ public interface TaskService {
      */
     AiTaskRecommendationResponse getAiRecommendations(String userId, Integer availableMinutes);
 
+
+    TaskStatsEnhancedResponse getTaskStatsEnhanced(String userId);
 }
 

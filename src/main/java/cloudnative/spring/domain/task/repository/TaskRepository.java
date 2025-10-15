@@ -30,6 +30,9 @@ public interface TaskRepository extends JpaRepository<Task, String> {
     // 5) 마감 임박 - 마감일이 특정 날짜 이전
     List<Task> findByUserIdAndDueAtBefore(String userId, LocalDateTime date);
 
+    Long countWeekTotalTasks(@Param("userId") String userId, @Param("startOfWeek") LocalDateTime startOfWeek);
+    Long countWeekCompletedTasks(@Param("userId") String userId, @Param("startOfWeek") LocalDateTime startOfWeek);
+
     // === 통계 ===
     long countByUserId(String userId);
     long countByUserIdAndStatus(String userId, TaskStatus status);

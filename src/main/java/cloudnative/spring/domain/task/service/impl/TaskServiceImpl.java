@@ -3,6 +3,7 @@ package cloudnative.spring.domain.task.service.impl;
 import cloudnative.spring.domain.task.client.AiRecommendationClient;
 import cloudnative.spring.domain.task.dto.request.CreateTaskRequest;
 import cloudnative.spring.domain.task.dto.response.TaskResponse;
+import cloudnative.spring.domain.task.dto.response.TaskStatsEnhancedResponse;
 import cloudnative.spring.domain.task.dto.response.TaskStatusResponse;
 import cloudnative.spring.domain.task.dto.response.TimeSlotResponse;
 import cloudnative.spring.domain.task.dto.response.Ai.AiTaskRecommendationResponse;
@@ -11,6 +12,7 @@ import cloudnative.spring.domain.task.entity.Task;
 import cloudnative.spring.domain.task.enums.TaskStatus;
 import cloudnative.spring.domain.task.repository.CategoryRepository;
 import cloudnative.spring.domain.task.repository.TaskRepository;
+import cloudnative.spring.domain.task.repository.WorkSessionRepository;
 import cloudnative.spring.domain.task.service.TaskService;
 import cloudnative.spring.domain.task.dto.request.Ai.AiRecommendationRequest;
 import cloudnative.spring.domain.task.dto.response.Ai.AiRecommendationResponse;
@@ -22,6 +24,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -39,6 +42,7 @@ public class TaskServiceImpl implements TaskService {
     private final TaskRepository taskRepository;
     private final CategoryRepository categoryRepository;
     private final AiRecommendationClient aiRecommendationClient;
+    private final WorkSessionRepository workSessionRepository;  // ← 추가
 
     @Override
     @Transactional
@@ -146,6 +150,79 @@ public class TaskServiceImpl implements TaskService {
                 .completedTasks(completedTasks)
                 .todoTasks(todoTasks)
                 .completionRate(totalTasks > 0 ? (double) completedTasks / totalTasks : 0.0)
+                .build();
+    }
+
+    @Override
+    public TaskStatsEnhancedResponse getTaskStatsEnhanced(String userId) {
+        log.info("확장 통계 조회 - userId: {}", userId);
+
+        // 이번 주 시작 시간 (월요일 00:00:00)
+        LocalDateTime startOfWeek = LocalDateTime.now()
+                .with(DayOfWeek.MONDAY)
+                .withHour(0)
+                .withMinute(0)
+                .withSecond(0)
+                .withNano(0);
+
+        // ===== 기본 통계 =====
+        Long totalTasks = taskRepository.countByUserId(userId);
+        Long completedTasks = taskRepository.countByUserIdAndStatus(userId, TaskStatus.COMPLETED);
+        Long todoTasks = totalTasks - completedTasks;
+
+        Double completionRate = totalTasks > 0
+                ? (completedTasks * 100.0 / totalTasks)
+                : 0.0;
+
+        // ===== 이번 주 통계 (비율) =====
+        Long weekTotalTasks = taskRepository.countWeekTotalTasks(userId, startOfWeek);
+        Long weekCompletedTasks = taskRepository.countWeekCompletedTasks(userId, startOfWeek);
+
+        Double weekCompletionRate = weekTotalTasks > 0
+                ? (weekCompletedTasks * 100.0 / weekTotalTasks)
+                : 0.0;
+
+        // ===== 뽀모도로 통계 =====
+        Long totalPomodoros = workSessionRepository.countCompletedPomodoros(userId);
+        Long todayPomodoros = workSessionRepository.countTodayCompletedPomodoros(userId);
+        Long weekPomodoros = workSessionRepository.countWeekCompletedPomodoros(userId, startOfWeek);
+        Long monthPomodoros = workSessionRepository.countMonthCompletedPomodoros(userId);
+
+        // ===== 집중 시간 (분 → 시간 변환) =====
+        Long totalFocusMinutes = workSessionRepository.sumTotalFocusMinutes(userId);
+        Long todayFocusMinutes = workSessionRepository.sumTodayFocusMinutes(userId);
+        Long weekFocusMinutes = workSessionRepository.sumWeekFocusMinutes(userId, startOfWeek);
+        Long monthFocusMinutes = workSessionRepository.sumMonthFocusMinutes(userId);
+
+        log.info("통계 결과 - 전체: {}, 완료: {}, 완료율: {}%",
+                totalTasks, completedTasks, round(completionRate));
+        log.info("이번 주 - 전체: {}, 완료: {}, 완료율: {}%",
+                weekTotalTasks, weekCompletedTasks, round(weekCompletionRate));
+        log.info("뽀모도로 - 전체: {}, 오늘: {}, 이번 주: {}, 이번 달: {}",
+                totalPomodoros, todayPomodoros, weekPomodoros, monthPomodoros);
+        log.info("집중 시간(분) - 전체: {}, 오늘: {}, 이번 주: {}, 이번 달: {}",
+                totalFocusMinutes, todayFocusMinutes, weekFocusMinutes, monthFocusMinutes);
+
+        return TaskStatsEnhancedResponse.builder()
+                // 기본 통계
+                .totalTasks(totalTasks)
+                .completedTasks(completedTasks)
+                .todoTasks(todoTasks)
+                .completionRate(round(completionRate))
+                // 이번 주 통계
+                .weekTotalTasks(weekTotalTasks)
+                .weekCompletedTasks(weekCompletedTasks)
+                .weekCompletionRate(round(weekCompletionRate))
+                // 뽀모도로
+                .totalPomodoros(defaultIfNull(totalPomodoros))
+                .todayPomodoros(defaultIfNull(todayPomodoros))
+                .weekPomodoros(defaultIfNull(weekPomodoros))
+                .monthPomodoros(defaultIfNull(monthPomodoros))
+                // 집중 시간 (시간 단위)
+                .totalFocusHours(convertMinutesToHours(totalFocusMinutes))
+                .todayFocusHours(convertMinutesToHours(todayFocusMinutes))
+                .weekFocusHours(convertMinutesToHours(weekFocusMinutes))
+                .monthFocusHours(convertMinutesToHours(monthFocusMinutes))
                 .build();
     }
 
@@ -289,6 +366,8 @@ public class TaskServiceImpl implements TaskService {
                 .build();
     }
 
+    // ========== Helper 메소드 ==========
+
     /**
      * userId를 Integer로 변환
      * 실패 시 0 반환
@@ -300,5 +379,33 @@ public class TaskServiceImpl implements TaskService {
             log.warn("userId 변환 실패, 0으로 대체 - userId: {}", userId);
             return 0;
         }
+    }
+
+    /**
+     * 분을 시간으로 변환 (소수점 2자리)
+     */
+    private Double convertMinutesToHours(Long minutes) {
+        if (minutes == null || minutes == 0) {
+            return 0.0;
+        }
+        double hours = minutes / 60.0;
+        return Math.round(hours * 100.0) / 100.0;
+    }
+
+    /**
+     * 소수점 2자리 반올림
+     */
+    private Double round(Double value) {
+        if (value == null) {
+            return 0.0;
+        }
+        return Math.round(value * 100.0) / 100.0;
+    }
+
+    /**
+     * null이면 0으로 변환
+     */
+    private Long defaultIfNull(Long value) {
+        return value != null ? value : 0L;
     }
 }
