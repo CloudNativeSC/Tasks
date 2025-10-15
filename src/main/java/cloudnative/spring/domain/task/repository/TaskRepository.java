@@ -30,9 +30,6 @@ public interface TaskRepository extends JpaRepository<Task, String> {
     // 5) 마감 임박 - 마감일이 특정 날짜 이전
     List<Task> findByUserIdAndDueAtBefore(String userId, LocalDateTime date);
 
-    Long countWeekTotalTasks(@Param("userId") String userId, @Param("startOfWeek") LocalDateTime startOfWeek);
-    Long countWeekCompletedTasks(@Param("userId") String userId, @Param("startOfWeek") LocalDateTime startOfWeek);
-
     // === 통계 ===
     long countByUserId(String userId);
     long countByUserIdAndStatus(String userId, TaskStatus status);
@@ -43,6 +40,38 @@ public interface TaskRepository extends JpaRepository<Task, String> {
      */
     List<Task> findByUserIdAndScheduledDateOrderByScheduledStartTimeAsc(String userId, LocalDate date);
 
+    // ===== 주간 통계 =====
+
+    /**
+     * 이번 주 등록된 Task 수
+     */
+    @Query("SELECT COUNT(t) FROM Task t WHERE t.userId = :userId " +
+            "AND t.createdAt >= :startOfWeek")
+    Long countWeekTotalTasks(@Param("userId") String userId,
+                             @Param("startOfWeek") LocalDateTime startOfWeek);
+
+    /**
+     * 이번 주 완료한 Task 수
+     */
+    @Query("SELECT COUNT(t) FROM Task t WHERE t.userId = :userId " +
+            "AND t.status = cloudnative.spring.domain.task.enums.TaskStatus.COMPLETED " +
+            "AND t.completedAt >= :startOfWeek")
+    Long countWeekCompletedTasks(@Param("userId") String userId,
+                                 @Param("startOfWeek") LocalDateTime startOfWeek);
+
+    // ===== 반복 작업용 쿼리 =====
+
+    /**
+     * isRecurring=true인 모든 Task 조회
+     */
+    List<Task> findByIsRecurring(Boolean isRecurring);
+
+    /**
+     * 중복 확인: 같은 userId, title, scheduledDate를 가진 Task가 있는지
+     */
+    boolean existsByUserIdAndTitleAndScheduledDate(String userId,
+                                                   String title,
+                                                   LocalDate scheduledDate);
 
     // === 서비스에서 사용하는 커스텀 쿼리 ===
 
