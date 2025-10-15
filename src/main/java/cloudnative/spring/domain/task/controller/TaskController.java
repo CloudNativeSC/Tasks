@@ -3,6 +3,7 @@ package cloudnative.spring.domain.task.controller;
 import cloudnative.spring.domain.task.dto.request.CreateTaskRequest;
 import cloudnative.spring.domain.task.dto.response.Ai.AiTaskRecommendationResponse;
 import cloudnative.spring.domain.task.dto.response.TaskResponse;
+import cloudnative.spring.domain.task.dto.response.TaskStatsEnhancedResponse;
 import cloudnative.spring.domain.task.dto.response.TaskStatusResponse;
 import cloudnative.spring.domain.task.dto.response.TimeSlotResponse;
 import cloudnative.spring.domain.task.enums.TaskStatus;
@@ -137,6 +138,23 @@ public class TaskController {
         TaskStatusResponse stats = taskService.getTaskStats(userId);
         return ResponseEntity.ok(stats);
     }
+
+// ========== 여기에 추가 ==========
+
+    /**
+     * 확장된 통계 조회 (뽀모도로 + 집중 시간 포함)
+     */
+    @Operation(
+            summary = "확장된 통계 조회 (마이페이지용)",
+            description = "Task 통계 + 뽀모도로 통계 + 집중 시간 통계를 포함한 상세 통계"
+    )
+    @GetMapping("/stats/enhanced")
+    public ResponseEntity<TaskStatsEnhancedResponse> getTaskStatsEnhanced(
+            @Parameter(description = "사용자 ID", required = true) @RequestParam String userId) {
+        TaskStatsEnhancedResponse stats = taskService.getTaskStatsEnhanced(userId);
+        return ResponseEntity.ok(stats);
+    }
+
 
     // ========== AI 추천 ==========
 
