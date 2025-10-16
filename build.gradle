@@ -24,18 +24,25 @@ repositories {
     mavenCentral()
 }
 
+
+// ========================================
+// Spring Cloud 버전 관리 (Feign 사용 위해 필수!)
+// ========================================
+ext {
+    set('springCloudVersion', "2024.0.0")
+}
+
 dependencies {
     // Web/JPA/Validation
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-    // === Flyway (핵심 수정) ===
+    // === Flyway ===
     implementation 'org.flywaydb:flyway-core:11.7.2'
-    implementation 'org.flywaydb:flyway-database-postgresql:11.7.2'  // ✅ 필수
-    // ==========================
+    implementation 'org.flywaydb:flyway-database-postgresql:11.7.2'
 
-    runtimeOnly 'org.postgresql:postgresql'                    // JDBC 드라이버
+    runtimeOnly 'org.postgresql:postgresql'
 
     implementation 'com.vladmihalcea:hibernate-types-60:2.21.1'
 
@@ -57,6 +64,30 @@ dependencies {
 
     // Spring Security OAuth2
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
+
+    // ========================================
+    // Feign Client 의존성 (여기부터 추가!)
+    // ========================================
+
+    // 1. Spring Cloud OpenFeign (핵심!)
+    implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
+
+    // 2. Feign OkHttp Client (성능 향상, 선택)
+    implementation 'io.github.openfeign:feign-okhttp:13.1'
+
+    // 3. Feign SLF4J Logging (로깅, 선택)
+    implementation 'io.github.openfeign:feign-slf4j:13.1'
+
+    // ========================================
+}
+
+// ========================================
+// Spring Cloud 버전 의존성 관리 (Feign 사용 위해 필수!)
+// ========================================
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+    }
 }
 
 tasks.named('test') {

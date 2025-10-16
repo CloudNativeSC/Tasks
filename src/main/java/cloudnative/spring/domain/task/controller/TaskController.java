@@ -8,10 +8,12 @@ import cloudnative.spring.domain.task.dto.response.TaskStatusResponse;
 import cloudnative.spring.domain.task.dto.response.TimeSlotResponse;
 import cloudnative.spring.domain.task.enums.TaskStatus;
 import cloudnative.spring.domain.task.service.TaskService;
+import cloudnative.spring.domain.task.scheduler.RecurringTaskScheduler;  // ← 추가!
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;  // ← 추가!
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,7 +21,9 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
+@Slf4j  // ← 추가! (log 사용을 위해)
 @RestController
 @RequestMapping("/api/tasks")
 @RequiredArgsConstructor
@@ -27,6 +31,7 @@ import java.util.List;
 public class TaskController {
 
     private final TaskService taskService;
+    private final RecurringTaskScheduler recurringTaskScheduler;  // ← 추가!
 
     // ========== 타임라인 스케줄링 ==========
 
@@ -139,8 +144,6 @@ public class TaskController {
         return ResponseEntity.ok(stats);
     }
 
-// ========== 여기에 추가 ==========
-
     /**
      * 확장된 통계 조회 (뽀모도로 + 집중 시간 포함)
      */
@@ -177,5 +180,33 @@ public class TaskController {
 
         AiTaskRecommendationResponse response = taskService.getAiRecommendations(userId, availableMinutes);
         return ResponseEntity.ok(response);
+    }
+
+    // ========== 반복 작업 스케줄러 테스트 ==========
+
+    /**
+     * 반복 작업 수동 실행 (테스트/개발용)
+     *
+     * <p>매일 자정에 자동 실행되는 스케줄러를 수동으로 즉시 실행합니다.
+     * <br>개발/테스트 환경에서 반복 Task가 제대로 생성되는지 확인할 때 사용하세요.
+     *
+     * <p><b>주의:</b> 운영 환경에서는 이 API를 비활성화하거나 권한을 제한하세요.
+     *
+     * @return 실행 결과 메시지
+     */
+    @Operation(
+            summary = "반복 작업 수동 실행 (테스트용)",
+            description = "스케줄러를 즉시 실행하여 반복 Task를 생성합니다. 개발/테스트 환경 전용입니다."
+    )
+    @PostMapping("/recurring/execute")
+    public ResponseEntity<Map<String, String>> executeRecurringTasks() {
+        log.info("반복 작업 수동 실행 요청");
+
+        recurringTaskScheduler.createRecurringTasks();
+
+        return ResponseEntity.ok(Map.of(
+                "message", "반복 작업 실행 완료",
+                "timestamp", LocalDateTime.now().toString()
+        ));
     }
 }
