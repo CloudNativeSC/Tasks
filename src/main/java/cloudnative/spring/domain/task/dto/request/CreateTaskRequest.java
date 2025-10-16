@@ -1,13 +1,16 @@
 package cloudnative.spring.domain.task.dto.request;
 
 import cloudnative.spring.domain.task.enums.Priority;
+import cloudnative.spring.domain.task.enums.RecurringPattern;
 import jakarta.validation.constraints.*;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Getter
 @Setter
@@ -35,4 +38,21 @@ public class CreateTaskRequest {
     
     @NotBlank(message = "카테고리 ID는 필수입니다.")
     private String categoryId;
+
+    /**
+     * 반복 패턴 (DAILY, WEEKLY, MONTHLY)
+     * isRecurring이 true일 때 필수
+     */
+
+    // 1. 반복 패턴
+    private RecurringPattern recurringPattern;
+
+    // 2. 스케줄 날짜
+    private LocalDate scheduledDate;
+
+    // 3. 시작 시간
+    private LocalTime scheduledStartTime;
+
+    // 4. 종료 시간
+    private LocalTime scheduledEndTime;
 }
