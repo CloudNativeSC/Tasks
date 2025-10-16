@@ -9,15 +9,11 @@ import feign.codec.ErrorDecoder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.concurrent.TimeUnit;
-
 /**
  * Feign Client 전역 설정
  *
- * 모든 Feign Client에 공통으로 적용되는 설정입니다.
+ * -모든 Feign Client에 공통으로 적용되는 설정
  *
- * @author CloudNative Team
- * @since 2025-10-16
  */
 @Configuration
 public class FeignConfig {
@@ -38,14 +34,16 @@ public class FeignConfig {
     /**
      * 요청 타임아웃 설정
      *
-     * connectTimeout: 연결 대기 시간
-     * readTimeout: 응답 대기 시간
+     * connectTimeout: 연결 대기 시간 (밀리초)
+     * readTimeout: 응답 대기 시간 (밀리초)
+     * followRedirects: 리다이렉트 따라가기 여부
      */
     @Bean
     public Request.Options feignOptions() {
         return new Request.Options(
-                5000, TimeUnit.MILLISECONDS,   // 연결 타임아웃: 5초
-                10000, TimeUnit.MILLISECONDS   // 읽기 타임아웃: 10초
+                5000,   // connectTimeout (ms): 5초
+                10000,  // readTimeout (ms): 10초
+                true    // followRedirects: 리다이렉트 자동 처리
         );
     }
 
@@ -66,8 +64,6 @@ public class FeignConfig {
     }
 
     /**
-     * 요청 인터셉터
-     *
      * 모든 요청에 공통 헤더를 추가합니다.
      */
     @Bean
@@ -87,9 +83,7 @@ public class FeignConfig {
     }
 
     /**
-     * 에러 디코더
-     *
-     * Feign Client 호출 시 발생하는 에러를 커스텀 예외로 변환합니다.
+     * Feign Client 호출 시 발생하는 에러를 커스텀 예외로 변환
      */
     @Bean
     public ErrorDecoder errorDecoder() {
