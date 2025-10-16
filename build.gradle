@@ -25,20 +25,19 @@ repositories {
 }
 
 
-// ========================================
-// Spring Cloud 버전 관리 (Feign 사용 위해 필수!)
-// ========================================
+//Spring Cloud
+
 ext {
-    set('springCloudVersion', "2024.0.0")
+    set('springCloudVersion', "2025.0.0")
 }
 
 dependencies {
-    // Web/JPA/Validation
+    //Web/JPA/Validation
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
 
-    // === Flyway ===
+    //Flyway
     implementation 'org.flywaydb:flyway-core:11.7.2'
     implementation 'org.flywaydb:flyway-database-postgresql:11.7.2'
 
@@ -46,44 +45,42 @@ dependencies {
 
     implementation 'com.vladmihalcea:hibernate-types-60:2.21.1'
 
-    // Lombok
+    //Lombok
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
 
-    // API 문서
+    //API 문서
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.11'
 
-    // Test
+    //Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-    // Google Calendar API
+    //Google Calendar API
     implementation 'com.google.api-client:google-api-client:2.2.0'
     implementation 'com.google.oauth-client:google-oauth-client-jetty:1.34.1'
     implementation 'com.google.apis:google-api-services-calendar:v3-rev20220715-2.0.0'
 
-    // Spring Security OAuth2
+    //Spring Security OAuth2
     implementation 'org.springframework.boot:spring-boot-starter-oauth2-client'
 
-    // ========================================
-    // Feign Client 의존성 (여기부터 추가!)
-    // ========================================
 
-    // 1. Spring Cloud OpenFeign (핵심!)
+    //Feign Client 의존성
+
+
+    // 1.Spring Cloud OpenFeign
     implementation 'org.springframework.cloud:spring-cloud-starter-openfeign'
 
-    // 2. Feign OkHttp Client (성능 향상, 선택)
+    // 2.Feign OkHttp Client
     implementation 'io.github.openfeign:feign-okhttp:13.1'
 
-    // 3. Feign SLF4J Logging (로깅, 선택)
+    // 3.Feign SLF4J Logging
     implementation 'io.github.openfeign:feign-slf4j:13.1'
-
-    // ========================================
 }
 
-// ========================================
-// Spring Cloud 버전 의존성 관리 (Feign 사용 위해 필수!)
-// ========================================
+
+//Spring Cloud 버전 의존성 관리
+
 dependencyManagement {
     imports {
         mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
