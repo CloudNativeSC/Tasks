@@ -2,10 +2,12 @@ package cloudnative.spring.domain.task.service.impl;
 
 import cloudnative.spring.domain.task.client.AiRecommendationClient;
 import cloudnative.spring.domain.task.dto.request.CreateTaskRequest;
+import cloudnative.spring.domain.task.dto.request.Ai.AiRecommendationRequest;
 import cloudnative.spring.domain.task.dto.response.TaskResponse;
 import cloudnative.spring.domain.task.dto.response.TaskStatsEnhancedResponse;
 import cloudnative.spring.domain.task.dto.response.TaskStatusResponse;
 import cloudnative.spring.domain.task.dto.response.TimeSlotResponse;
+import cloudnative.spring.domain.task.dto.response.Ai.AiRecommendationResponse;
 import cloudnative.spring.domain.task.dto.response.Ai.AiTaskRecommendationResponse;
 import cloudnative.spring.domain.task.entity.Category;
 import cloudnative.spring.domain.task.entity.Task;
@@ -14,11 +16,14 @@ import cloudnative.spring.domain.task.repository.CategoryRepository;
 import cloudnative.spring.domain.task.repository.TaskRepository;
 import cloudnative.spring.domain.task.repository.WorkSessionRepository;
 import cloudnative.spring.domain.task.service.TaskService;
-import cloudnative.spring.domain.task.dto.request.Ai.AiRecommendationRequest;
-import cloudnative.spring.domain.task.dto.response.Ai.AiRecommendationResponse;
 import cloudnative.spring.global.exception.handler.GeneralHandler;
 import cloudnative.spring.global.response.status.ErrorCode;
-
+import cloudnative.spring.external.client.UserClient;
+import cloudnative.spring.external.client.AuthClient;
+import cloudnative.spring.external.client.AppointmentClient;
+import cloudnative.spring.external.dto.appointment.CreateAppointmentRequest;
+import cloudnative.spring.external.dto.appointment.AppointmentResponse;
+import cloudnative.spring.external.exception.ExternalServiceException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -42,12 +47,17 @@ public class TaskServiceImpl implements TaskService {
     private final TaskRepository taskRepository;
     private final CategoryRepository categoryRepository;
     private final AiRecommendationClient aiRecommendationClient;
-    private final WorkSessionRepository workSessionRepository;  // ← 추가
+    private final WorkSessionRepository workSessionRepository;
+    private final UserClient userClient;
+    private final AuthClient authClient;
+    private final AppointmentClient appointmentClient;
 
     @Override
     @Transactional
     public TaskResponse createTask(String userId, CreateTaskRequest request) {
         log.info("작업 생성 시작 - userId: {}, title: {}", userId, request.getTitle());
+
+        validateUser(userId);
 
         Category category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new GeneralHandler(ErrorCode.CATEGORY_NOT_FOUND));
@@ -61,11 +71,18 @@ public class TaskServiceImpl implements TaskService {
                 .estimatedPomodoros(request.getEstimatedPomodoros())
                 .dueAt(request.getDueAt())
                 .isRecurring(Boolean.TRUE.equals(request.getIsRecurring()))
+                .recurringPattern(request.getRecurringPattern())
+                .scheduledDate(request.getScheduledDate())
+                .scheduledStartTime(request.getScheduledStartTime())
+                .scheduledEndTime(request.getScheduledEndTime())
                 .category(category)
                 .build();
 
         Task savedTask = taskRepository.save(task);
         log.info("작업 생성 완료 - taskId: {}", savedTask.getId());
+
+        syncToAppointmentIfScheduled(userId, savedTask);
+
         return TaskResponse.from(savedTask);
     }
 
@@ -157,7 +174,6 @@ public class TaskServiceImpl implements TaskService {
     public TaskStatsEnhancedResponse getTaskStatsEnhanced(String userId) {
         log.info("확장 통계 조회 - userId: {}", userId);
 
-        // 이번 주 시작 시간 (월요일 00:00:00)
         LocalDateTime startOfWeek = LocalDateTime.now()
                 .with(DayOfWeek.MONDAY)
                 .withHour(0)
@@ -165,7 +181,6 @@ public class TaskServiceImpl implements TaskService {
                 .withSecond(0)
                 .withNano(0);
 
-        // ===== 기본 통계 =====
         Long totalTasks = taskRepository.countByUserId(userId);
         Long completedTasks = taskRepository.countByUserIdAndStatus(userId, TaskStatus.COMPLETED);
         Long todoTasks = totalTasks - completedTasks;
@@ -174,7 +189,6 @@ public class TaskServiceImpl implements TaskService {
                 ? (completedTasks * 100.0 / totalTasks)
                 : 0.0;
 
-        // ===== 이번 주 통계 (비율) =====
         Long weekTotalTasks = taskRepository.countWeekTotalTasks(userId, startOfWeek);
         Long weekCompletedTasks = taskRepository.countWeekCompletedTasks(userId, startOfWeek);
 
@@ -182,13 +196,11 @@ public class TaskServiceImpl implements TaskService {
                 ? (weekCompletedTasks * 100.0 / weekTotalTasks)
                 : 0.0;
 
-        // ===== 뽀모도로 통계 =====
         Long totalPomodoros = workSessionRepository.countCompletedPomodoros(userId);
         Long todayPomodoros = workSessionRepository.countTodayCompletedPomodoros(userId);
         Long weekPomodoros = workSessionRepository.countWeekCompletedPomodoros(userId, startOfWeek);
         Long monthPomodoros = workSessionRepository.countMonthCompletedPomodoros(userId);
 
-        // ===== 집중 시간 (분 → 시간 변환) =====
         Long totalFocusMinutes = workSessionRepository.sumTotalFocusMinutes(userId);
         Long todayFocusMinutes = workSessionRepository.sumTodayFocusMinutes(userId);
         Long weekFocusMinutes = workSessionRepository.sumWeekFocusMinutes(userId, startOfWeek);
@@ -204,29 +216,23 @@ public class TaskServiceImpl implements TaskService {
                 totalFocusMinutes, todayFocusMinutes, weekFocusMinutes, monthFocusMinutes);
 
         return TaskStatsEnhancedResponse.builder()
-                // 기본 통계
                 .totalTasks(totalTasks)
                 .completedTasks(completedTasks)
                 .todoTasks(todoTasks)
                 .completionRate(round(completionRate))
-                // 이번 주 통계
                 .weekTotalTasks(weekTotalTasks)
                 .weekCompletedTasks(weekCompletedTasks)
                 .weekCompletionRate(round(weekCompletionRate))
-                // 뽀모도로
                 .totalPomodoros(defaultIfNull(totalPomodoros))
                 .todayPomodoros(defaultIfNull(todayPomodoros))
                 .weekPomodoros(defaultIfNull(weekPomodoros))
                 .monthPomodoros(defaultIfNull(monthPomodoros))
-                // 집중 시간 (시간 단위)
                 .totalFocusHours(convertMinutesToHours(totalFocusMinutes))
                 .todayFocusHours(convertMinutesToHours(todayFocusMinutes))
                 .weekFocusHours(convertMinutesToHours(weekFocusMinutes))
                 .monthFocusHours(convertMinutesToHours(monthFocusMinutes))
                 .build();
     }
-
-    // ========== 타임라인 스케줄링 ==========
 
     @Override
     @Transactional
@@ -236,13 +242,15 @@ public class TaskServiceImpl implements TaskService {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new GeneralHandler(ErrorCode.TASK_NOT_FOUND));
 
-        // 스케줄 정보 설정
         task.setScheduledDate(startTime.toLocalDate());
         task.setScheduledStartTime(startTime.toLocalTime());
         task.setScheduledEndTime(endTime.toLocalTime());
 
         Task savedTask = taskRepository.save(task);
         log.info("작업 스케줄 설정 완료 - taskId: {}", taskId);
+
+        syncToAppointmentIfScheduled(task.getUserId(), savedTask);
+
         return TaskResponse.from(savedTask);
     }
 
@@ -262,29 +270,24 @@ public class TaskServiceImpl implements TaskService {
     public List<TimeSlotResponse> getAvailableTimeSlots(String userId, LocalDate date) {
         log.debug("빈 시간 슬롯 조회 - userId: {}, date: {}", userId, date);
 
-        // 해당 날짜의 스케줄된 작업들 조회
         List<Task> scheduledTasks = taskRepository.findByUserIdAndScheduledDateOrderByScheduledStartTimeAsc(userId, date);
 
         List<TimeSlotResponse> availableSlots = new ArrayList<>();
-        LocalTime currentTime = LocalTime.of(6, 0);   // 시작: 06:00
-        LocalTime endOfDay = LocalTime.of(23, 59);    // 종료: 23:59
+        LocalTime currentTime = LocalTime.of(6, 0);
+        LocalTime endOfDay = LocalTime.of(23, 59);
 
-        // 각 스케줄된 작업 사이의 빈 시간 찾기
         for (Task task : scheduledTasks) {
             LocalTime taskStart = task.getScheduledStartTime();
             LocalTime taskEnd = task.getScheduledEndTime();
 
-            // 현재 시간과 작업 시작 시간 사이에 빈 시간이 있으면
             if (currentTime.isBefore(taskStart)) {
                 availableSlots.add(new TimeSlotResponse(currentTime, taskStart));
                 log.debug("빈 시간 슬롯 발견 - {} ~ {}", currentTime, taskStart);
             }
 
-            // 다음 검사 시작 시간 = 현재 작업 종료 시간
             currentTime = taskEnd;
         }
 
-        // 마지막 작업 이후 하루 종료까지 빈 시간
         if (currentTime.isBefore(endOfDay)) {
             availableSlots.add(new TimeSlotResponse(currentTime, endOfDay));
             log.debug("마지막 빈 시간 슬롯 - {} ~ {}", currentTime, endOfDay);
@@ -294,30 +297,25 @@ public class TaskServiceImpl implements TaskService {
         return availableSlots;
     }
 
-    // ========== AI 추천 ==========
-
     @Override
     public AiTaskRecommendationResponse getAiRecommendations(String userId, Integer availableMinutes) {
         log.info("AI 추천 요청 - userId: {}, availableMinutes: {}분", userId, availableMinutes);
 
-        // 1. 현재 시간/요일 계산
         LocalDateTime now = LocalDateTime.now();
         int currentHour = now.getHour();
-        int currentWeekday = now.getDayOfWeek().getValue() - 1;  // 0=Monday, 6=Sunday
+        int currentWeekday = now.getDayOfWeek().getValue() - 1;
 
         log.debug("현재 시간 정보 - hour: {}, weekday: {}", currentHour, currentWeekday);
 
-        // 2. FastAPI 요청 생성
         AiRecommendationRequest aiRequest = AiRecommendationRequest.builder()
                 .userId(parseUserId(userId))
                 .availableMinutes(availableMinutes)
-                .numRecommendations(10)  // 10개 추천
+                .numRecommendations(10)
                 .startHour(currentHour)
                 .weekday(currentWeekday)
                 .fillTime(false)
                 .build();
 
-        // 3. FastAPI 호출
         AiRecommendationResponse aiResponse;
         try {
             aiResponse = aiRecommendationClient.getRecommendations(aiRequest);
@@ -329,7 +327,6 @@ public class TaskServiceImpl implements TaskService {
             throw new RuntimeException("AI 추천 서버와 통신할 수 없습니다. 잠시 후 다시 시도해주세요.", e);
         }
 
-        // 4. FastAPI 응답을 프론트 형식으로 변환
         List<AiTaskRecommendationResponse.RecommendedTask> recommendations =
                 aiResponse.getRecommendations().stream()
                         .map(aiTask -> AiTaskRecommendationResponse.RecommendedTask.builder()
@@ -355,7 +352,6 @@ public class TaskServiceImpl implements TaskService {
         log.info("AI 추천 완료 - 추천: {}개, 시간 채우기: {}개",
                 recommendations.size(), packedRecommendations.size());
 
-        // 5. 응답 생성
         return AiTaskRecommendationResponse.builder()
                 .userId(aiResponse.getUserId())
                 .availableMinutes(aiResponse.getAvailableMinutes())
@@ -366,12 +362,44 @@ public class TaskServiceImpl implements TaskService {
                 .build();
     }
 
-    // ========== Helper 메소드 ==========
+    private void validateUser(String userId) {
+        try {
+            Boolean userExists = userClient.checkUserExists(userId);
+            if (Boolean.FALSE.equals(userExists)) {
+                log.error("사용자를 찾을 수 없음 - userId: {}", userId);
+                throw new GeneralHandler(ErrorCode.USER_NOT_FOUND);
+            }
+            log.debug("사용자 검증 완료 - userId: {}", userId);
+        } catch (ExternalServiceException e) {
+            log.warn("User 서비스 호출 실패, Task 생성은 진행합니다 - error: {}", e.getMessage());
+        }
+    }
 
-    /**
-     * userId를 Integer로 변환
-     * 실패 시 0 반환
-     */
+    private void syncToAppointmentIfScheduled(String userId, Task task) {
+        if (task.getScheduledDate() == null
+                || task.getScheduledStartTime() == null
+                || task.getScheduledEndTime() == null) {
+            return;
+        }
+
+        try {
+            CreateAppointmentRequest appointmentRequest = CreateAppointmentRequest.builder()
+                    .title(task.getTitle())
+                    .description(task.getDescription())
+                    .appointmentDate(task.getScheduledDate())
+                    .startTime(task.getScheduledStartTime())
+                    .endTime(task.getScheduledEndTime())
+                    .location("Task from Task Service")
+                    .build();
+
+            AppointmentResponse response = appointmentClient.createAppointment(userId, appointmentRequest);
+            log.info("Appointment 동기화 완료 - taskId: {}, appointmentId: {}",
+                    task.getId(), response.getId());
+        } catch (ExternalServiceException e) {
+            log.error("Appointment 동기화 실패 - taskId: {}, error: {}", task.getId(), e.getMessage());
+        }
+    }
+
     private Integer parseUserId(String userId) {
         try {
             return Integer.parseInt(userId);
@@ -381,9 +409,6 @@ public class TaskServiceImpl implements TaskService {
         }
     }
 
-    /**
-     * 분을 시간으로 변환 (소수점 2자리)
-     */
     private Double convertMinutesToHours(Long minutes) {
         if (minutes == null || minutes == 0) {
             return 0.0;
@@ -392,9 +417,6 @@ public class TaskServiceImpl implements TaskService {
         return Math.round(hours * 100.0) / 100.0;
     }
 
-    /**
-     * 소수점 2자리 반올림
-     */
     private Double round(Double value) {
         if (value == null) {
             return 0.0;
@@ -402,9 +424,6 @@ public class TaskServiceImpl implements TaskService {
         return Math.round(value * 100.0) / 100.0;
     }
 
-    /**
-     * null이면 0으로 변환
-     */
     private Long defaultIfNull(Long value) {
         return value != null ? value : 0L;
     }
