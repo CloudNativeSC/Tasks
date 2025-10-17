@@ -1,0 +1,153 @@
+spring:
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate   # validate or none 사용
+    properties:
+      hibernate:
+        default_schema: public
+        format_sql: true
+    show-sql: true
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: 1
+    schemas: public
+    locations: classpath:db/migration
+
+# ========================================
+# AI 추천 서비스
+# ========================================
+ai:
+  recommendation:
+    url: http://133.186.143.101:8000
+    connect-timeout: 5000
+    read-timeout: 10000
+
+# ========================================
+# 구글 캘린더
+# ========================================
+google:
+  calendar:
+    application-name: Pomodoro App
+    credentials-file-path: /credentials.json
+    tokens-directory-path: tokens
+
+# ========================================
+# Feign Client 설정
+# ========================================
+feign:
+  client:
+    config:
+      # 기본 설정 (모든 Client에 적용)
+      default:
+        connectTimeout: 5000      # 연결 타임아웃: 5초
+        readTimeout: 10000        # 읽기 타임아웃: 10초
+        loggerLevel: full         # 로그 레벨
+
+      # User Service 전용 설정
+      user-service:
+        connectTimeout: 3000
+        readTimeout: 5000
+
+      # Auth Service 전용 설정
+      auth-service:
+        connectTimeout: 2000
+        readTimeout: 3000
+
+      # Appointment Service 전용 설정
+      appointment-service:
+        connectTimeout: 5000
+        readTimeout: 10000
+
+  # HTTP 클라이언트 설정
+  okhttp:
+    enabled: true               # OkHttp 사용 (성능 향상)
+
+  # 압축 설정
+  compression:
+    request:
+      enabled: true
+      mime-types: text/xml,application/xml,application/json
+      min-request-size: 2048
+    response:
+      enabled: true
+
+# ========================================
+# 외부 서비스 URL 설정
+# ========================================
+external:
+  services:
+    # User Service
+    user:
+      url: http://user:8080      # Kubernetes 내부: Service 이름
+      # url: http://localhost:8081  # 로컬 개발: localhost
+
+    # Auth Service
+    auth:
+      url: http://auth:8080
+      # url: http://localhost:8080
+
+    # Appointment Service
+    appointment:
+      url: http://appointment:8083
+      # url: http://localhost:8083
+
+# ========================================
+# 서버 설정
+# ========================================
+server:
+  port: 8080
+
+  # 에러 응답 설정
+  error:
+    include-message: always
+    include-binding-errors: always
+    include-stacktrace: on-param
+    include-exception: false
+
+# ========================================
+# 로깅 설정 (중복 제거, 하나로 통합!)
+# ========================================
+logging:
+  level:
+    # Hibernate SQL
+    org.hibernate.SQL: debug
+    org.hibernate.type.descriptor.sql: trace
+
+    # Feign Client 로그
+    cloudnative.spring.external.client: DEBUG
+    feign: DEBUG
+
+    # 기타
+    cloudnative.spring: INFO
+    org.springframework: INFO
+
+# ========================================
+# Actuator 설정 (모니터링용)
+# ========================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+
+
+# ========================================
+# Swagger (SpringDoc OpenAPI)
+# ========================================
+springdoc:
+  swagger-ui:
+    enabled: false   #배포(prod) 환경에서는 Swagger 비활성화
+  api-docs:
+    enabled: false
