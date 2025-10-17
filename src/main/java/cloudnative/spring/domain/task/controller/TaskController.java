@@ -8,12 +8,14 @@ import cloudnative.spring.domain.task.dto.response.TaskStatusResponse;
 import cloudnative.spring.domain.task.dto.response.TimeSlotResponse;
 import cloudnative.spring.domain.task.enums.TaskStatus;
 import cloudnative.spring.domain.task.service.TaskService;
-import cloudnative.spring.domain.task.scheduler.RecurringTaskScheduler;  // ← 추가!
+import cloudnative.spring.domain.task.scheduler.RecurringTaskScheduler;
+import cloudnative.spring.domain.task.dto.request.CreateTaskRequest;
+import cloudnative.spring.domain.task.dto.request.UpdateTaskRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;  // ← 추가!
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -36,7 +38,7 @@ public class TaskController {
     // ========== 타임라인 스케줄링 ==========
 
     // 작업 스케줄 설정
-    @Operation(summary = "작업 스케줄 설정", description = "작업을 특정 시간대에 배치합니다.")
+    @Operation(summary = "작업 스케줄 설정[구글캘린더 연동]", description = "작업을 특정 시간대에 배치합니다.")
     @PatchMapping("/{id}/schedule")
     public ResponseEntity<TaskResponse> scheduleTask(
             @Parameter(description = "작업 ID", required = true) @PathVariable String id,
@@ -107,6 +109,36 @@ public class TaskController {
         TaskResponse task = taskService.getTaskById(id);
         return ResponseEntity.ok(task);
     }
+
+
+    // 할 일 수정 PUT /api/tasks/{id}
+    @Operation(
+            summary = "할 일 수정[구글캘린더 연동]",
+            description = "할 일의 정보를 수정합니다. 스케줄이 설정되어 있으면 구글 캘린더도 자동 업데이트됩니다."
+    )
+    @PutMapping("/{id}")
+    public ResponseEntity<TaskResponse> updateTask(
+            @Parameter(description = "할 일 ID", required = true)
+            @PathVariable String id,
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(description = "할 일 수정 정보")
+            @jakarta.validation.Valid @RequestBody cloudnative.spring.domain.task.dto.request.UpdateTaskRequest request) {
+        TaskResponse task = taskService.updateTask(id, request);
+        return ResponseEntity.ok(task);
+    }
+
+    // 할 일 삭제 DELETE /api/tasks/{id}
+    @Operation(
+            summary = "할 일 삭제[구글캘린더 연동]",
+            description = "할 일을 삭제합니다. 구글 캘린더 이벤트도 함께 삭제됩니다."
+    )
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteTask(
+            @Parameter(description = "할 일 ID", required = true)
+            @PathVariable String id) {
+        taskService.deleteTask(id);
+        return ResponseEntity.noContent().build();
+    }
+
 
     // 할 일 완료 처리 PATCH /api/tasks/{id}/complete
     @Operation(summary = "할 일 완료 처리", description = "할 일을 완료 상태로 변경합니다.")
@@ -196,7 +228,7 @@ public class TaskController {
      */
     @Operation(
             summary = "반복 작업 수동 실행 (테스트용)",
-            description = "스케줄러를 즉시 실행하여 반복 Task를 생성합니다. 개발/테스트 환경 전용입니다."
+            description = "스케줄러를 즉시 실행하여 반복 Task를 생성합니다."
     )
     @PostMapping("/recurring/execute")
     public ResponseEntity<Map<String, String>> executeRecurringTasks() {

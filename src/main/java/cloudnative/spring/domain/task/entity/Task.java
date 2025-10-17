@@ -78,6 +78,9 @@ public class Task extends BaseTimeEntity {
     @Column(name = "completed_at")
     private LocalDateTime completedAt;
 
+    @Column(name = "google_calendar_event_id")
+    private String googleCalendarEventId;
+
     // N:1 관계 - 여러 Task는 하나의 Category에 속함
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)

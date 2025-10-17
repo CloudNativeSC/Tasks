@@ -1,6 +1,7 @@
 package cloudnative.spring.domain.task.service;
 
 import cloudnative.spring.domain.task.dto.request.CreateTaskRequest;
+import cloudnative.spring.domain.task.dto.request.UpdateTaskRequest;
 import cloudnative.spring.domain.task.dto.response.TaskResponse;
 import cloudnative.spring.domain.task.dto.response.TaskStatsEnhancedResponse;
 import cloudnative.spring.domain.task.dto.response.TaskStatusResponse;
@@ -39,5 +40,15 @@ public interface TaskService {
 
 
     TaskStatsEnhancedResponse getTaskStatsEnhanced(String userId);
+
+    /**
+     * Task 수정
+     */
+    TaskResponse updateTask(String taskId, UpdateTaskRequest request);
+
+    /**
+     * Task 삭제
+     */
+    void deleteTask(String taskId);
 }
 

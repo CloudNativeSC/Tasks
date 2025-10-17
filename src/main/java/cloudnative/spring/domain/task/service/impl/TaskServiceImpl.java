@@ -3,6 +3,7 @@ package cloudnative.spring.domain.task.service.impl;
 import cloudnative.spring.domain.task.client.AiRecommendationClient;
 import cloudnative.spring.domain.task.dto.request.CreateTaskRequest;
 import cloudnative.spring.domain.task.dto.request.Ai.AiRecommendationRequest;
+import cloudnative.spring.domain.task.dto.request.UpdateTaskRequest;
 import cloudnative.spring.domain.task.dto.response.TaskResponse;
 import cloudnative.spring.domain.task.dto.response.TaskStatsEnhancedResponse;
 import cloudnative.spring.domain.task.dto.response.TaskStatusResponse;
@@ -15,6 +16,7 @@ import cloudnative.spring.domain.task.enums.TaskStatus;
 import cloudnative.spring.domain.task.repository.CategoryRepository;
 import cloudnative.spring.domain.task.repository.TaskRepository;
 import cloudnative.spring.domain.task.repository.WorkSessionRepository;
+import cloudnative.spring.domain.task.service.GoogleCalendarService;
 import cloudnative.spring.domain.task.service.TaskService;
 import cloudnative.spring.global.exception.handler.GeneralHandler;
 import cloudnative.spring.global.response.status.ErrorCode;
@@ -51,6 +53,7 @@ public class TaskServiceImpl implements TaskService {
     private final UserClient userClient;
     private final AuthClient authClient;
     private final AppointmentClient appointmentClient;
+    private final GoogleCalendarService googleCalendarService;  // ← 추가
 
     @Override
     @Transactional
@@ -234,6 +237,8 @@ public class TaskServiceImpl implements TaskService {
                 .build();
     }
 
+    // ========== 스케줄링 및 구글 캘린더 연동 ==========
+
     @Override
     @Transactional
     public TaskResponse scheduleTask(String taskId, LocalDateTime startTime, LocalDateTime endTime) {
@@ -246,12 +251,149 @@ public class TaskServiceImpl implements TaskService {
         task.setScheduledStartTime(startTime.toLocalTime());
         task.setScheduledEndTime(endTime.toLocalTime());
 
+        // 구글 캘린더 연동
+        if (task.getUserId() != null) {
+            try {
+                String eventId = googleCalendarService.createCalendarEvent(
+                        task.getUserId(),
+                        task.getTitle(),
+                        task.getDescription(),
+                        startTime,
+                        endTime
+                );
+                task.setGoogleCalendarEventId(eventId);
+                log.info("✅ 구글 캘린더 연동 완료 - eventId: {}", eventId);
+            } catch (Exception e) {
+                log.warn("⚠️ 구글 캘린더 연동 실패 (Task는 저장됨)", e);
+            }
+        }
+
         Task savedTask = taskRepository.save(task);
         log.info("작업 스케줄 설정 완료 - taskId: {}", taskId);
 
+        // Appointment 동기화
         syncToAppointmentIfScheduled(task.getUserId(), savedTask);
 
         return TaskResponse.from(savedTask);
+    }
+
+    @Override
+    @Transactional
+    public TaskResponse updateTask(String taskId, UpdateTaskRequest request) {
+        log.info("작업 수정 - taskId: {}", taskId);
+
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.TASK_NOT_FOUND));
+
+        // Task 정보 업데이트
+        if (request.getTitle() != null) {
+            task.setTitle(request.getTitle());
+        }
+        if (request.getDescription() != null) {
+            task.setDescription(request.getDescription());
+        }
+        if (request.getPriority() != null) {
+            task.setPriority(request.getPriority());
+        }
+        if (request.getEstimatedPomodoros() != null) {
+            task.setEstimatedPomodoros(request.getEstimatedPomodoros());
+        }
+        if (request.getDueAt() != null) {
+            task.setDueAt(request.getDueAt());
+        }
+        if (request.getScheduledDate() != null) {
+            task.setScheduledDate(request.getScheduledDate());
+        }
+        if (request.getScheduledStartTime() != null) {
+            task.setScheduledStartTime(request.getScheduledStartTime());
+        }
+        if (request.getScheduledEndTime() != null) {
+            task.setScheduledEndTime(request.getScheduledEndTime());
+        }
+
+        // Category 업데이트
+        if (request.getCategoryId() != null) {
+            Category category = categoryRepository.findById(request.getCategoryId())
+                    .orElseThrow(() -> new GeneralHandler(ErrorCode.CATEGORY_NOT_FOUND));
+            task.setCategory(category);
+        }
+
+        // 구글 캘린더 이벤트 업데이트
+        if (task.getGoogleCalendarEventId() != null
+                && task.getUserId() != null
+                && task.getScheduledDate() != null
+                && task.getScheduledStartTime() != null
+                && task.getScheduledEndTime() != null) {
+
+            try {
+                LocalDateTime startTime = LocalDateTime.of(
+                        task.getScheduledDate(),
+                        task.getScheduledStartTime()
+                );
+                LocalDateTime endTime = LocalDateTime.of(
+                        task.getScheduledDate(),
+                        task.getScheduledEndTime()
+                );
+
+                googleCalendarService.updateCalendarEvent(
+                        task.getUserId(),
+                        task.getGoogleCalendarEventId(),
+                        task.getTitle(),
+                        task.getDescription(),
+                        startTime,
+                        endTime
+                );
+                log.info("✅ 구글 캘린더 이벤트 수정 완료 - eventId: {}",
+                        task.getGoogleCalendarEventId());
+            } catch (Exception e) {
+                log.warn("⚠️ 구글 캘린더 이벤트 수정 실패 - eventId: {}",
+                        task.getGoogleCalendarEventId(), e);
+            }
+        }
+
+        Task savedTask = taskRepository.save(task);
+        log.info("작업 수정 완료 - taskId: {}", taskId);
+
+        // Appointment 동기화
+        syncToAppointmentIfScheduled(task.getUserId(), savedTask);
+
+        return TaskResponse.from(savedTask);
+    }
+
+    @Override
+    @Transactional
+    public void deleteTask(String taskId) {
+        log.info("작업 삭제 - taskId: {}", taskId);
+
+        Task task = taskRepository.findById(taskId)
+                .orElseThrow(() -> new GeneralHandler(ErrorCode.TASK_NOT_FOUND));
+
+        // 1. WorkSession 삭제
+        try {
+            workSessionRepository.deleteByTaskId(taskId);
+            log.info("✅ WorkSession 삭제 완료 - taskId: {}", taskId);
+        } catch (Exception e) {
+            log.warn("⚠️ WorkSession 삭제 실패 - taskId: {}", taskId, e);
+        }
+
+        // 2. 구글 캘린더 이벤트 삭제
+        if (task.getGoogleCalendarEventId() != null && task.getUserId() != null) {
+            try {
+                googleCalendarService.deleteCalendarEvent(
+                        task.getUserId(),
+                        task.getGoogleCalendarEventId()
+                );
+                log.info("✅ 구글 캘린더 이벤트 삭제 완료 - eventId: {}",
+                        task.getGoogleCalendarEventId());
+            } catch (Exception e) {
+                log.warn("⚠️ 구글 캘린더 이벤트 삭제 실패 - eventId: {}",
+                        task.getGoogleCalendarEventId(), e);
+            }
+        }
+
+        // 3. Task 삭제
+        taskRepository.delete(task);
+        log.info("작업 삭제 완료 - taskId: {}", taskId);
     }
 
     @Override
@@ -296,6 +438,8 @@ public class TaskServiceImpl implements TaskService {
         log.debug("총 빈 시간 슬롯 수: {}", availableSlots.size());
         return availableSlots;
     }
+
+    // ========== AI 추천 ==========
 
     @Override
     public AiTaskRecommendationResponse getAiRecommendations(String userId, Integer availableMinutes) {
@@ -361,6 +505,8 @@ public class TaskServiceImpl implements TaskService {
                 .packedRecommendations(packedRecommendations)
                 .build();
     }
+
+    // ========== Private 헬퍼 메소드 ==========
 
     private void validateUser(String userId) {
         try {

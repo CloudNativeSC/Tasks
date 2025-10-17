@@ -31,6 +31,12 @@ public interface WorkSessionRepository extends JpaRepository<WorkSession, Long> 
 
     // ===== 뽀모도로 통계 =====
 
+
+    /**
+     * Task 삭제 시 연결된 WorkSession도 삭제
+     */
+    void deleteByTaskId(String taskId);
+
     /**
      * 전체 완료한 뽀모도로 개수
      */

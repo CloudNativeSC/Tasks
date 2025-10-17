@@ -31,6 +31,7 @@ public class TaskResponse {
     private String categoryName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String googleCalendarEventId;
 
     public static TaskResponse from(Task task) {
         return TaskResponse.builder()
