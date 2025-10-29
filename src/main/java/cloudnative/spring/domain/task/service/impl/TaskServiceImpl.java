@@ -594,7 +594,7 @@ public class TaskServiceImpl implements TaskService {
                     .userId(userId)
                     .adjustmentRatio(1.0)
                     .categoryRatios(new HashMap<>())
-                    .suggestion("아직 완료한 작업이 없어요. 작업을 완료하면 분석이 시작됩니다! 📊")
+                    .suggestion("아직 완료한 작업이 없습니다. 작업을 완료하면 분석이 시작됩니다.")
                     .analyzedTaskCount(0)
                     .totalEstimatedMinutes(0L)
                     .totalActualMinutes(0L)
