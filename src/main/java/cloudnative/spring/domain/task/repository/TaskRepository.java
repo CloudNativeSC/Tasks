@@ -118,13 +118,13 @@ public interface TaskRepository extends JpaRepository<Task, String> {
      */
     @Query("""
         SELECT DISTINCT t FROM Task t
-        LEFT JOIN FETCH t.workSessions ws
+        LEFT JOIN t.workSessions ws
         LEFT JOIN FETCH t.category
         WHERE t.userId = :userId
         AND t.status = cloudnative.spring.domain.task.enums.TaskStatus.COMPLETED
         AND t.scheduledStartTime IS NOT NULL
         AND t.scheduledEndTime IS NOT NULL
-        AND ws IS NOT NULL
+        AND ws.id IS NOT NULL
         ORDER BY t.completedAt DESC
         """)
     List<Task> findCompletedTasksWithSessions(@Param("userId") String userId);
