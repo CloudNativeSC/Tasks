@@ -108,4 +108,25 @@ public interface TaskRepository extends JpaRepository<Task, String> {
     List<Task> findUrgentTasks(@Param("userId") String userId,
                                @Param("now") LocalDateTime now,
                                @Param("until") LocalDateTime until);
+
+    /**
+     * WorkSession이 있는 완료된 Task 조회 (시간 보정 계산용)
+     * - 완료된 Task만
+     * - scheduledStartTime, scheduledEndTime이 있는 것만
+     * - WorkSession이 있는 것만
+     * - Category도 함께 로드 (카테고리별 보정을 위해)
+     */
+    @Query("""
+        SELECT DISTINCT t FROM Task t
+        LEFT JOIN FETCH t.workSessions ws
+        LEFT JOIN FETCH t.category
+        WHERE t.userId = :userId
+        AND t.status = cloudnative.spring.domain.task.enums.TaskStatus.COMPLETED
+        AND t.scheduledStartTime IS NOT NULL
+        AND t.scheduledEndTime IS NOT NULL
+        AND ws IS NOT NULL
+        ORDER BY t.completedAt DESC
+        """)
+    List<Task> findCompletedTasksWithSessions(@Param("userId") String userId);
 }
+
