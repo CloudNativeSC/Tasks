@@ -8,6 +8,8 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import cloudnative.spring.global.entity.BaseTimeEntity;
 import cloudnative.spring.domain.task.enums.TaskStatus;
@@ -85,6 +87,14 @@ public class Task extends BaseTimeEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
+
+    /**
+     * Task와 연결된 WorkSession 목록
+     * (실제 작업 시간 기록)
+     */
+    @OneToMany(mappedBy = "task", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<WorkSession> workSessions = new ArrayList<>();
 
     // 비즈니스 메소드
     public void markAsCompleted() {
