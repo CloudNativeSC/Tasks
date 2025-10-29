@@ -26,6 +26,8 @@ import cloudnative.spring.external.client.AppointmentClient;
 import cloudnative.spring.external.dto.appointment.CreateAppointmentRequest;
 import cloudnative.spring.external.dto.appointment.AppointmentResponse;
 import cloudnative.spring.external.exception.ExternalServiceException;
+import cloudnative.spring.domain.task.dto.response.TimeAdjustment.TimeAdjustmentResponse;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,6 +41,9 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -573,4 +578,162 @@ public class TaskServiceImpl implements TaskService {
     private Long defaultIfNull(Long value) {
         return value != null ? value : 0L;
     }
+
+    //시간 보정 기능 구현
+
+    @Override
+    public TimeAdjustmentResponse calculateTimeAdjustment(String userId) {
+        log.info("시간 보정률 계산 시작 - userId: {}", userId);
+
+        // 1. 완료된 Task 조회 (WorkSession + Category 포함)
+        List<Task> completedTasks = taskRepository.findCompletedTasksWithSessions(userId);
+
+        if (completedTasks.isEmpty()) {
+            log.info("분석할 데이터 없음 - userId: {}", userId);
+            return TimeAdjustmentResponse.builder()
+                    .userId(userId)
+                    .adjustmentRatio(1.0)
+                    .categoryRatios(new HashMap<>())
+                    .suggestion("아직 완료한 작업이 없어요. 작업을 완료하면 분석이 시작됩니다! 📊")
+                    .analyzedTaskCount(0)
+                    .totalEstimatedMinutes(0L)
+                    .totalActualMinutes(0L)
+                    .build();
+        }
+
+        // 2. 전체 평균 보정률 계산
+        double totalRatio = 0.0;
+        int validTaskCount = 0;
+        long totalEstimated = 0L;
+        long totalActual = 0L;
+
+        for (Task task : completedTasks) {
+            // 예상 시간 계산
+            Long estimatedMinutes = calculateEstimatedMinutes(task);
+            if (estimatedMinutes == null || estimatedMinutes == 0) {
+                continue;
+            }
+
+            // 실제 시간 계산
+            Integer actualMinutes = calculateActualMinutes(task);
+            if (actualMinutes == 0) {
+                continue;
+            }
+
+            // 보정률 = 실제 / 예상
+            double ratio = (double) actualMinutes / estimatedMinutes;
+            totalRatio += ratio;
+            validTaskCount++;
+
+            totalEstimated += estimatedMinutes;
+            totalActual += actualMinutes;
+
+            log.debug("Task 분석 - title: {}, 예상: {}분, 실제: {}분, 비율: {:.2f}",
+                    task.getTitle(), estimatedMinutes, actualMinutes, ratio);
+        }
+
+        // 3. 평균 보정률
+        double avgRatio = validTaskCount > 0 ? totalRatio / validTaskCount : 1.0;
+
+        // 4. 카테고리별 보정률 계산
+        Map<String, Double> categoryRatios = calculateCategoryRatios(completedTasks);
+
+        log.info("시간 보정률 계산 완료 - userId: {}, 전체 보정률: {:.2f}, 분석 Task: {}개, 카테고리: {}개",
+                userId, avgRatio, validTaskCount, categoryRatios.size());
+
+        // 5. 응답 생성
+        return TimeAdjustmentResponse.builder()
+                .userId(userId)
+                .adjustmentRatio(Math.round(avgRatio * 100.0) / 100.0)  // 소수점 2자리
+                .categoryRatios(categoryRatios)
+                .suggestion(generateSuggestion(avgRatio))
+                .analyzedTaskCount(validTaskCount)
+                .totalEstimatedMinutes(totalEstimated)
+                .totalActualMinutes(totalActual)
+                .build();
+    }
+
+    /**
+     * 카테고리별 시간 보정률 계산
+     */
+    private Map<String, Double> calculateCategoryRatios(List<Task> tasks) {
+        Map<String, List<Double>> ratiosByCategory = new HashMap<>();
+
+        for (Task task : tasks) {
+            // 카테고리명 추출
+            String categoryName = task.getCategory() != null
+                    ? task.getCategory().getName()
+                    : "미분류";
+
+            Long estimated = calculateEstimatedMinutes(task);
+            Integer actual = calculateActualMinutes(task);
+
+            if (estimated != null && estimated > 0 && actual > 0) {
+                double ratio = (double) actual / estimated;
+                ratiosByCategory
+                        .computeIfAbsent(categoryName, k -> new ArrayList<>())
+                        .add(ratio);
+            }
+        }
+
+        // 각 카테고리별 평균 계산
+        Map<String, Double> result = new HashMap<>();
+        for (Map.Entry<String, List<Double>> entry : ratiosByCategory.entrySet()) {
+            double avg = entry.getValue().stream()
+                    .mapToDouble(Double::doubleValue)
+                    .average()
+                    .orElse(1.0);
+            result.put(entry.getKey(), Math.round(avg * 100.0) / 100.0);  // 소수점 2자리
+
+            log.debug("카테고리별 보정률 - {}: {:.2f}배 ({}개 Task 분석)",
+                    entry.getKey(), avg, entry.getValue().size());
+        }
+
+        return result;
+    }
+
+    /**
+     * 예상 소요 시간 계산 (분)
+     */
+    private Long calculateEstimatedMinutes(Task task) {
+        if (task.getScheduledStartTime() == null || task.getScheduledEndTime() == null) {
+            return null;
+        }
+
+        LocalTime start = task.getScheduledStartTime();
+        LocalTime end = task.getScheduledEndTime();
+
+        return Duration.between(start, end).toMinutes();
+    }
+
+    /**
+     * 실제 소요 시간 계산 (분)
+     * WorkSession의 durationMinutes 합산
+     */
+    private Integer calculateActualMinutes(Task task) {
+        if (task.getWorkSessions() == null || task.getWorkSessions().isEmpty()) {
+            return 0;
+        }
+
+        return task.getWorkSessions().stream()
+                .mapToInt(ws -> ws.getDurationMinutes() != null ? ws.getDurationMinutes() : 0)
+                .sum();
+    }
+
+    /**
+     * 보정률에 따른 제안 메시지 생성
+     */
+    private String generateSuggestion(Double ratio) {
+        if (ratio < 0.8) {
+            return "예상보다 빨리 끝내셨어요! 시간을 좀 더 여유롭게 잡아도 좋겠어요.";
+        } else if (ratio < 1.2) {
+            return "예상 시간이 정확해요! 지금처럼 계획하면 해낼 수 있을 거에요.";
+        } else if (ratio < 1.5) {
+            int percentage = (int) Math.round(ratio * 100);
+            return String.format("평균적으로 예상보다 조금 더 걸려요시간을 %d%%로 계획하는 건 어떨까요?", percentage);
+        } else {
+            return "예상보다 많이 걸리는 편이에요.시간을 1.5배 정도 여유있게 잡으시길 추천해요.";
+        }
+    }
 }
+
