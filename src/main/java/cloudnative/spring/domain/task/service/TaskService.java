@@ -5,6 +5,7 @@ import cloudnative.spring.domain.task.dto.request.UpdateTaskRequest;
 import cloudnative.spring.domain.task.dto.response.TaskResponse;
 import cloudnative.spring.domain.task.dto.response.TaskStatsEnhancedResponse;
 import cloudnative.spring.domain.task.dto.response.TaskStatusResponse;
+import cloudnative.spring.domain.task.dto.response.TimeAdjustment.TimeAdjustmentResponse;
 import cloudnative.spring.domain.task.dto.response.TimeSlotResponse;
 import cloudnative.spring.domain.task.dto.response.Ai.AiTaskRecommendationResponse;
 import cloudnative.spring.domain.task.enums.TaskStatus;
@@ -50,5 +51,16 @@ public interface TaskService {
      * Task 삭제
      */
     void deleteTask(String taskId);
+
+    /**
+     * 사용자의 시간 보정률 계산
+     * - 예상 시간 vs 실제 시간 분석
+     * - 전체 평균 보정률
+     * - 카테고리별 보정률
+     *
+     * @param userId 사용자 ID
+     * @return 시간 보정률 분석 결과
+     */
+    TimeAdjustmentResponse calculateTimeAdjustment(String userId);
 }
 
