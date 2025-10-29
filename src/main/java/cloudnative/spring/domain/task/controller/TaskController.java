@@ -11,6 +11,7 @@ import cloudnative.spring.domain.task.service.TaskService;
 import cloudnative.spring.domain.task.scheduler.RecurringTaskScheduler;
 import cloudnative.spring.domain.task.dto.request.CreateTaskRequest;
 import cloudnative.spring.domain.task.dto.request.UpdateTaskRequest;
+import cloudnative.spring.domain.task.dto.response.TimeAdjustment.TimeAdjustmentResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -240,5 +241,30 @@ public class TaskController {
                 "message", "반복 작업 실행 완료",
                 "timestamp", LocalDateTime.now().toString()
         ));
+    }
+
+    /**
+     * 시간 보정률 조회
+     */
+    @Operation(
+            summary = "시간 보정률 조회",
+            description = "사용자의 예상 시간 대비 실제 시간 비율을 분석합니다. " +
+                    "전체 평균 보정률과 카테고리별 보정률을 제공하여 " +
+                    "다음 작업 시간 추천에 활용할 수 있습니다."
+    )
+    @GetMapping("/time-adjustment")
+    public ResponseEntity<TimeAdjustmentResponse> getTimeAdjustment(
+            @Parameter(description = "사용자 ID", required = true, example = "1")
+            @RequestParam String userId) {
+
+        log.info("시간 보정률 조회 요청 - userId: {}", userId);
+
+        TimeAdjustmentResponse response = taskService.calculateTimeAdjustment(userId);
+
+        log.info("시간 보정률 조회 완료 - userId: {}, 보정률: {}, 카테고리: {}개",
+                userId, response.getAdjustmentRatio(),
+                response.getCategoryRatios() != null ? response.getCategoryRatios().size() : 0);
+
+        return ResponseEntity.ok(response);
     }
 }
